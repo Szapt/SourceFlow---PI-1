@@ -1,0 +1,14 @@
+services:
+  frontend:
+    build:
+      context: "./Front P1"
+    ports:
+      - "5173:5173"
+    volumes:
+      - "./Front P1:/app"
+      - "node_modules_vol:/app/node_modules"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+
+volumes:
+  node_modules_vol:
