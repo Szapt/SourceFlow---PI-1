@@ -1,5 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { auth } from "../services/auth/firebaseConfig";
 import { GitBranch, Github, ShieldCheck, Users, BookOpen } from "lucide-react";
+import { useState } from "react";
+import { GithubAuthProvider, signInWithPopup } from "firebase/auth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -17,7 +20,54 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const handleLogin = () => navigate({ to: "/" });
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [, setTokens] = useState<any>(null);
+
+  const handleLogin = () => {
+    navigate({ to: "/" });
+  };
+
+  const signInWithGitHub = async () => {
+    setLoading(true);
+    const provider = new GithubAuthProvider();
+
+    try {
+      const result = await signInWithPopup(auth, provider);
+      console.log("Autenticación Github: ", result.user);
+      const { accessToken, refreshToken } = (result.user as any).stsTokenManager;
+      setTokens({
+        accessToken,
+        refreshToken,
+        userRole: "USER",
+      });
+      navigate({ to: "/" });
+    } catch (error) {
+      console.error("Error al conectar con GitHub.", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      // TODO: Implementar lógica de login con email/password hacia tu API
+      console.log("Login manual:", { email, password });
+      handleLogin();
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Correo o contraseña incorrectos."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
       {/* Left — branding */}
@@ -94,13 +144,21 @@ function LoginPage() {
             académico vinculado a tus proyectos.
           </p>
 
+          {error && (
+            <p className="mt-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+              {error}
+            </p>
+          )}
+
           <button
             type="button"
-            onClick={handleLogin}
-            className="mt-8 inline-flex w-full items-center justify-center gap-2.5 rounded-md bg-[oklch(0.18_0.01_250)] px-4 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
+            id="btn-github-login"
+            onClick={signInWithGitHub}
+            disabled={loading}
+            className="mt-8 inline-flex w-full items-center justify-center gap-2.5 rounded-md bg-[oklch(0.18_0.01_250)] px-4 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             <Github className="h-4 w-4" />
-            Continuar con GitHub
+            {loading ? "Cargando…" : "Continuar con GitHub"}
           </button>
 
           <div className="my-6 flex items-center gap-3">
@@ -113,18 +171,19 @@ function LoginPage() {
 
           <form
             className="space-y-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleLogin();
-            }}
+            onSubmit={handleEmailLogin}
           >
             <label className="block">
               <span className="text-xs font-medium text-foreground">
                 Correo institucional
               </span>
               <input
+                id="input-email"
                 type="email"
                 placeholder="usuario@universidad.edu.co"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
                 className="mt-1 h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-accent-green-deep focus:ring-2 focus:ring-accent-green-soft"
               />
             </label>
@@ -133,16 +192,22 @@ function LoginPage() {
                 Contraseña
               </span>
               <input
+                id="input-password"
                 type="password"
                 placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
                 className="mt-1 h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none focus:border-accent-green-deep focus:ring-2 focus:ring-accent-green-soft"
               />
             </label>
             <button
+              id="btn-email-login"
               type="submit"
-              className="mt-2 inline-flex h-10 w-full items-center justify-center rounded-md bg-accent-green-deep text-sm font-medium text-white hover:opacity-90"
+              disabled={loading}
+              className="mt-2 inline-flex h-10 w-full items-center justify-center rounded-md bg-accent-green-deep text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
-              Iniciar sesión
+              {loading ? "Cargando…" : "Iniciar sesión"}
             </button>
           </form>
 
