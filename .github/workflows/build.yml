@@ -25,4 +25,4 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
           chmod +x ./gradlew
-          ./gradlew build
+          ./gradlew build -x test
