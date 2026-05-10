@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { ProjectCard } from "@/components/ProjectCard";
 import { projects } from "@/data/projects";
@@ -12,6 +12,13 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
+  beforeLoad: () => {
+    if (!localStorage.getItem("isAuthenticated")) {
+      throw redirect({
+        to: "/login",
+      });
+    }
+  },
   head: () => ({
     meta: [
       { title: "Dashboard — SourceFlow Repositorio Académico" },

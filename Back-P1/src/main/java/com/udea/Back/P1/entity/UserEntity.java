@@ -5,26 +5,27 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 @Entity
-@Table(name = "users")
+@Table(name = "Users")
 @Data
 public class UserEntity {
 
     @Column(nullable = false)
     private String name;
 
+    @Id
     @Column(unique = true, nullable = false)
     private String email;
 
     @Column(nullable = false)
     private String password;
 
-    @Column
+    @Column(name = "github_id")
     @JsonIgnore
-    private Long github_id;
+    private Long githubId;
 
-    @Column
+    @Column(name = "github_username")
     @JsonIgnore
-    private String github_username;
+    private String githubUsername;
 
     @Column(nullable = false)
     @JsonIgnore

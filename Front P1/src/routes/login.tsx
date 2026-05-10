@@ -27,6 +27,7 @@ function LoginPage() {
   const [, setTokens] = useState<any>(null);
 
   const handleLogin = () => {
+    localStorage.setItem("isAuthenticated", "true");
     navigate({ to: "/" });
   };
 
@@ -43,6 +44,7 @@ function LoginPage() {
         refreshToken,
         userRole: "USER",
       });
+      localStorage.setItem("isAuthenticated", "true");
       navigate({ to: "/" });
     } catch (error) {
       console.error("Error al conectar con GitHub.", error);
@@ -56,12 +58,25 @@ function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      // TODO: Implementar lógica de login con email/password hacia tu API
-      console.log("Login manual:", { email, password });
+      const response = await fetch("http://localhost:8080/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Correo o contraseña incorrectos.");
+      }
+
+      const data = await response.json();
+      console.log("Usuario logueado:", data);
+
       handleLogin();
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Correo o contraseña incorrectos."
+        err instanceof Error ? err.message : "Error al conectar con el servidor."
       );
     } finally {
       setLoading(false);

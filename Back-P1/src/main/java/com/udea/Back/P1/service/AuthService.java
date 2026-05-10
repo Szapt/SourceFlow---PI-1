@@ -30,7 +30,10 @@ public class AuthService {
             return false;
         }
 
-        boolean passwordMatches = passwordEncoder.matches(password, user.getPassword());
+        boolean passwordMatches = password.equals(user.getPassword());
+
+        // boolean passwordMatches = passwordEncoder.matches(password,
+        // user.getPassword());
 
         return passwordMatches;
     }
