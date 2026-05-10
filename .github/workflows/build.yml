@@ -18,8 +18,11 @@ jobs:
           distribution: 'temurin'
 
       - name: Build with Gradle
+        working-directory: ./Back-P1
         env:
           DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        run: ./gradlew build
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build
