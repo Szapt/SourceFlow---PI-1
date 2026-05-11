@@ -35,6 +35,12 @@ export function AppSidebar() {
   const isActive = (url: string) =>
     url === "/" ? location.pathname === "/" : location.pathname.startsWith(url);
 
+  const logout = () => {
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("userName");
+    navigate({ to: "/login" });
+  };
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
@@ -81,7 +87,7 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={() => navigate({ to: "/login" })}>
+            <SidebarMenuButton onClick={logout}>
               <LogOut className="h-4 w-4" />
               <span>Cerrar sesión</span>
             </SidebarMenuButton>

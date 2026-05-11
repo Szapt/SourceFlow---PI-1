@@ -31,4 +31,7 @@ public class UserEntity {
     @JsonIgnore
     private int rol;
 
+    @Column(nullable = false)
+    private String provider;
+
 }

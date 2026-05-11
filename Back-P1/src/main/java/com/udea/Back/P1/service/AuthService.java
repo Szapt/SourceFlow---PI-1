@@ -33,9 +33,26 @@ public class AuthService {
         boolean passwordMatches = password.equals(user.getPassword());
 
         // boolean passwordMatches = passwordEncoder.matches(password,
-        // user.getPassword());
-
         return passwordMatches;
+    }
+
+    public UserEntity register(String email, String password, String name, String provider) {
+        UserEntity existing = userRepository.findByEmail(email);
+
+        if (existing != null) {
+            if (provider.equals(existing.getProvider())) {
+                return existing; // OAuth que ya existe, dejarlo pasar
+            }
+            return null; // conflicto de provider
+        }
+
+        UserEntity newUser = new UserEntity();
+        newUser.setEmail(email);
+        newUser.setName(name != null ? name : "User");
+        newUser.setPassword(password); // null si es OAuth
+        newUser.setProvider(provider);
+        newUser.setRol(0);
+        return userRepository.save(newUser);
     }
 
     public UserEntity findByEmail(String email) {
