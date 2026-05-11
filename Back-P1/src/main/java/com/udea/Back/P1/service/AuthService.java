@@ -26,12 +26,10 @@ public class AuthService {
             return false;
         }
         if (user == null) {
-            System.out.println("Correo no asociado a una cuenta " + email);
             return false;
         }
 
         if (user.getPassword() == null) {
-            System.out.println("El usuario intentó iniciar sesión con contraseña pero su cuenta es OAuth.");
             return false;
         }
 
@@ -40,7 +38,7 @@ public class AuthService {
         return passwordMatches;
     }
 
-    public UserEntity register(String email, String password, String name, String provider) {
+    public UserEntity register(String email, String password, String name, String provider, String githubName) {
         UserEntity existing = userRepository.findByEmail(email);
 
         if (existing != null) {
@@ -56,6 +54,7 @@ public class AuthService {
         newUser.setPassword(password != null ? passwordEncoder.encode(password) : null);
         newUser.setProvider(provider);
         newUser.setRol(0);
+        newUser.setGithubUsername(githubName);
         return userRepository.save(newUser);
     }
 

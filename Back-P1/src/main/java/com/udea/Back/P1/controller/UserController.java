@@ -44,7 +44,7 @@ public class UserController {
                 dto.getEmail(),
                 dto.getPassword(),
                 dto.getName() != null ? dto.getName() : "User",
-                "local");
+                "local", null);
 
         if (user == null) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -60,7 +60,8 @@ public class UserController {
                 dto.getEmail(),
                 null,
                 dto.getName(),
-                dto.getProvider());
+                dto.getProvider(),
+                dto.getGithubName());
 
         if (user == null) {
             return ResponseEntity.status(HttpStatus.CONFLICT)

@@ -45,7 +45,8 @@ function LoginPage() {
         body: JSON.stringify({
           email: user.email,
           name: user.displayName,
-          provider: 'github'
+          provider: 'github',
+          githubName: (user as any).reloadUserInfo?.screenName
         })
       });
 
