@@ -28,7 +28,14 @@ export interface Project {
   forks: number;
   openIssues: number;
   repoUrl: string;
+  githubRepo: string; // full URL https://github.com/owner/repo
   activity: ActivityItem[];
+}
+
+export function parseGithubRepo(url: string): { owner: string; repo: string } | null {
+  const m = url.match(/github\.com[/:]([^/]+)\/([^/.]+)(?:\.git)?\/?$/);
+  if (!m) return null;
+  return { owner: m[1], repo: m[2] };
 }
 
 export const projects: Project[] = [
@@ -55,6 +62,7 @@ export const projects: Project[] = [
     forks: 7,
     openIssues: 5,
     repoUrl: "github.com/sourceflow/sigma-attendance",
+    githubRepo: "https://github.com/ageitgey/face_recognition",
     activity: [
       { who: "Andrés Gómez", initials: "AG", what: "abrió un PR #57: caché de embeddings", time: "12m" },
       { who: "María Restrepo", initials: "MR", what: "actualizó README", time: "5h" },
@@ -85,6 +93,7 @@ export const projects: Project[] = [
     forks: 12,
     openIssues: 2,
     repoUrl: "github.com/sourceflow/campus-routing",
+    githubRepo: "https://github.com/Project-OSRM/osrm-backend",
     activity: [
       { who: "Laura Vélez", initials: "LV", what: "publicó documentación final", time: "3sem" },
       { who: "Sofía Marín", initials: "SM", what: "marcó proyecto como completo", time: "3sem" },
@@ -113,6 +122,7 @@ export const projects: Project[] = [
     forks: 3,
     openIssues: 14,
     repoUrl: "github.com/sourceflow/gradehub",
+    githubRepo: "https://github.com/appwrite/appwrite",
     activity: [
       { who: "Juan Pulido", initials: "JP", what: "creó issue #14: validación de CSV", time: "3h" },
       { who: "Daniela Ríos", initials: "DR", what: "subió mockups al EAP", time: "1d" },
@@ -141,6 +151,7 @@ export const projects: Project[] = [
     forks: 9,
     openIssues: 1,
     repoUrl: "github.com/sourceflow/iot-lab-monitor",
+    githubRepo: "https://github.com/home-assistant/core",
     activity: [
       { who: "Tomás Henao", initials: "TH", what: "marcó proyecto como completo", time: "1mes" },
       { who: "Valentina Ruiz", initials: "VR", what: "publicó manifiesto de entrega", time: "1mes" },
@@ -166,6 +177,7 @@ export const projects: Project[] = [
     forks: 4,
     openIssues: 8,
     repoUrl: "github.com/sourceflow/thesis-recommender",
+    githubRepo: "https://github.com/scikit-learn/scikit-learn",
     activity: [
       { who: "Mateo Caicedo", initials: "MC", what: "actualizó dataset y métricas", time: "5d" },
       { who: "Mateo Caicedo", initials: "MC", what: "abrió issue #8: re-entrenamiento", time: "1sem" },
@@ -194,6 +206,7 @@ export const projects: Project[] = [
     forks: 1,
     openIssues: 19,
     repoUrl: "github.com/sourceflow/club-eventos",
+    githubRepo: "https://github.com/flutter/samples",
     activity: [
       { who: "Isabela Núñez", initials: "IN", what: "última actualización del repositorio", time: "8mes" },
     ],
@@ -221,6 +234,7 @@ export const projects: Project[] = [
     forks: 6,
     openIssues: 11,
     repoUrl: "github.com/sourceflow/exam-proctor",
+    githubRepo: "https://github.com/tensorflow/tensorflow",
     activity: [
       { who: "Natalia Cárdenas", initials: "NC", what: "subió paper de referencia al EAP", time: "1sem" },
       { who: "Esteban Pardo", initials: "EP", what: "abrió PR #22: detección de mirada", time: "4d" },
@@ -249,6 +263,7 @@ export const projects: Project[] = [
     forks: 8,
     openIssues: 3,
     repoUrl: "github.com/sourceflow/library-search",
+    githubRepo: "https://github.com/qdrant/qdrant",
     activity: [
       { who: "Felipe Acosta", initials: "FA", what: "publicó manifiesto de entrega", time: "2mes" },
       { who: "Carolina Mejía", initials: "CM", what: "agregó sección de pruebas al EAP", time: "2mes" },

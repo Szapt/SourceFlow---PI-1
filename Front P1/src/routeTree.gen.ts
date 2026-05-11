@@ -15,7 +15,7 @@ import { Route as NewRouteImport } from './routes/new'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ProjectsSlugRouteImport } from './routes/projects.$slug'
+import { Route as ProjectsSlugRouteImport } from './routes/projects_.$slug'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -48,9 +48,9 @@ const IndexRoute = IndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsSlugRoute = ProjectsSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => ProjectsRoute,
+  id: '/projects_/$slug',
+  path: '/projects/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -58,8 +58,12 @@ export interface FileRoutesByFullPath {
   '/docs': typeof DocsRoute
   '/login': typeof LoginRoute
   '/new': typeof NewRoute
+<<<<<<< Updated upstream
   '/projects': typeof ProjectsRouteWithChildren
   '/register': typeof RegisterRoute
+=======
+  '/projects': typeof ProjectsRoute
+>>>>>>> Stashed changes
   '/projects/$slug': typeof ProjectsSlugRoute
 }
 export interface FileRoutesByTo {
@@ -67,8 +71,12 @@ export interface FileRoutesByTo {
   '/docs': typeof DocsRoute
   '/login': typeof LoginRoute
   '/new': typeof NewRoute
+<<<<<<< Updated upstream
   '/projects': typeof ProjectsRouteWithChildren
   '/register': typeof RegisterRoute
+=======
+  '/projects': typeof ProjectsRoute
+>>>>>>> Stashed changes
   '/projects/$slug': typeof ProjectsSlugRoute
 }
 export interface FileRoutesById {
@@ -77,9 +85,14 @@ export interface FileRoutesById {
   '/docs': typeof DocsRoute
   '/login': typeof LoginRoute
   '/new': typeof NewRoute
+<<<<<<< Updated upstream
   '/projects': typeof ProjectsRouteWithChildren
   '/register': typeof RegisterRoute
   '/projects/$slug': typeof ProjectsSlugRoute
+=======
+  '/projects': typeof ProjectsRoute
+  '/projects_/$slug': typeof ProjectsSlugRoute
+>>>>>>> Stashed changes
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -107,8 +120,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/new'
     | '/projects'
+<<<<<<< Updated upstream
     | '/register'
     | '/projects/$slug'
+=======
+    | '/projects_/$slug'
+>>>>>>> Stashed changes
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -116,8 +133,13 @@ export interface RootRouteChildren {
   DocsRoute: typeof DocsRoute
   LoginRoute: typeof LoginRoute
   NewRoute: typeof NewRoute
+<<<<<<< Updated upstream
   ProjectsRoute: typeof ProjectsRouteWithChildren
   RegisterRoute: typeof RegisterRoute
+=======
+  ProjectsRoute: typeof ProjectsRoute
+  ProjectsSlugRoute: typeof ProjectsSlugRoute
+>>>>>>> Stashed changes
 }
 
 declare module '@tanstack/react-router' {
@@ -164,35 +186,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/projects/$slug': {
-      id: '/projects/$slug'
-      path: '/$slug'
+    '/projects_/$slug': {
+      id: '/projects_/$slug'
+      path: '/projects/$slug'
       fullPath: '/projects/$slug'
       preLoaderRoute: typeof ProjectsSlugRouteImport
-      parentRoute: typeof ProjectsRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-interface ProjectsRouteChildren {
-  ProjectsSlugRoute: typeof ProjectsSlugRoute
-}
-
-const ProjectsRouteChildren: ProjectsRouteChildren = {
-  ProjectsSlugRoute: ProjectsSlugRoute,
-}
-
-const ProjectsRouteWithChildren = ProjectsRoute._addFileChildren(
-  ProjectsRouteChildren,
-)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRoute: DocsRoute,
   LoginRoute: LoginRoute,
   NewRoute: NewRoute,
+<<<<<<< Updated upstream
   ProjectsRoute: ProjectsRouteWithChildren,
   RegisterRoute: RegisterRoute,
+=======
+  ProjectsRoute: ProjectsRoute,
+  ProjectsSlugRoute: ProjectsSlugRoute,
+>>>>>>> Stashed changes
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

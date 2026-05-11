@@ -1,0 +1,8 @@
+Front P1/node_modules
+Front P1/dist
+Front P1/.wrangler
+Front P1/.turbo
+Front P1/.tanstack
+Back-P1/.gradle
+Back-P1/build
+.DS_Store
