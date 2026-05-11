@@ -30,9 +30,13 @@ public class AuthService {
             return false;
         }
 
-        boolean passwordMatches = password.equals(user.getPassword());
+        if (user.getPassword() == null) {
+            System.out.println("El usuario intentó iniciar sesión con contraseña pero su cuenta es OAuth.");
+            return false;
+        }
 
-        // boolean passwordMatches = passwordEncoder.matches(password,
+        boolean passwordMatches = passwordEncoder.matches(password, user.getPassword());
+
         return passwordMatches;
     }
 
@@ -49,7 +53,7 @@ public class AuthService {
         UserEntity newUser = new UserEntity();
         newUser.setEmail(email);
         newUser.setName(name != null ? name : "User");
-        newUser.setPassword(password); // null si es OAuth
+        newUser.setPassword(password != null ? passwordEncoder.encode(password) : null);
         newUser.setProvider(provider);
         newUser.setRol(0);
         return userRepository.save(newUser);
