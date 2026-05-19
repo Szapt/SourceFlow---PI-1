@@ -28,7 +28,8 @@ public class SecurityConfig {
                         .requestMatchers("/login").permitAll()
                         .requestMatchers("/register").permitAll()
                         .requestMatchers("/register/oauth").permitAll()
-                        .requestMatchers("/", "/api/projects/**").permitAll()
+                        .requestMatchers("/projects").permitAll()
+                        .requestMatchers("/", "/projects/**").permitAll()
                         .anyRequest().authenticated());
         return http.build();
     }
