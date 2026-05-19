@@ -16,12 +16,12 @@ interface DBProject {
   id: number;
   name: string;
   description: string | null;
-  repo_url: string;           // ej: "https://github.com/MariAgudelo2/Poi-Bank"
+  repoUrl: string;           // ej: "https://github.com/MariAgudelo2/Poi-Bank"
   course: number | null;
   semester: number | null;
-  project_type: number | null;
+  projectType: number | null;
   state: number | null;
-  manifest_url: string | null;
+  manifestUrl: string | null;
   tutor: number | null;
 }
 
@@ -113,26 +113,27 @@ export function useGitHubRepos(_options?: {
       // ── 2. Enriquecer cada proyecto con la GitHub API en paralelo ──────────
       const enriched = await Promise.allSettled(
         dbProjects.map(async (dbProject): Promise<Project | null> => {
-          const parsed = parseGitHubUrl(dbProject.repo_url);
-          if (!parsed) return null;
+          try {
+            const parsed = parseGitHubUrl(dbProject.repoUrl);
+            if (!parsed) return buildFallbackProject(dbProject);
 
-          const ghRes = await fetch(
-            `https://api.github.com/repos/${parsed.owner}/${parsed.repo}`,
-            { headers: GH_HEADERS }
-          );
+            const ghRes = await fetch(
+              `https://api.github.com/repos/${parsed.owner}/${parsed.repo}`,
+              { headers: GH_HEADERS }
+            );
 
-          if (!ghRes.ok) {
-            // Si el repo no existe o es privado, construimos un Project mínimo
-            // con los datos que tenemos en la DB
+            if (!ghRes.ok) {
+              return buildFallbackProject(dbProject);
+            }
+
+            const ghRepo: GitHubRepo = await ghRes.json();
+            ghRepo._db = dbProject;
+
+            return mapGitHubRepoToProject(ghRepo);
+          } catch (e) {
+            console.error("Error al enriquecer repositorio con GitHub:", e);
             return buildFallbackProject(dbProject);
           }
-
-          const ghRepo: GitHubRepo = await ghRes.json();
-          // Inyectamos los datos de DB en el repo de GitHub para que el mapper
-          // pueda usarlos (course, semester, etc.)
-          ghRepo._db = dbProject;
-
-          return mapGitHubRepoToProject(ghRepo);
         })
       );
 
@@ -172,7 +173,7 @@ export function useGitHubRepos(_options?: {
 // ── Fallback: proyecto sin datos de GitHub (repo privado o no encontrado) ─────
 
 function buildFallbackProject(db: DBProject): Project {
-  const parsed = parseGitHubUrl(db.repo_url);
+  const parsed = parseGitHubUrl(db.repoUrl);
   const slug = parsed?.repo ?? String(db.id);
 
   return {
@@ -191,7 +192,7 @@ function buildFallbackProject(db: DBProject): Project {
     openIssues: 0,
     qualityScore: 40,
     updatedAt: "—",
-    repoUrl: db.repo_url.replace("https://", ""),
+    repoUrl: db.repoUrl ? db.repoUrl.replace("https://", "") : "",
     testCoverage: 0,
     activity: [],
     isPrivate: false,

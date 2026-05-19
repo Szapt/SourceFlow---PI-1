@@ -71,7 +71,7 @@ export function mapGitHubRepoToProject(repo: GitHubRepo): Project {
     short: db?.description ?? repo.description ?? "Sin descripcion.",
     course: (db?.course && courseMap[db.course]) ? courseMap[db.course] : deriveCourse(repo),
     semester: db?.semester ? String(db.semester) : "",
-    type: (db?.project_type && typeMap[db.project_type]) ? typeMap[db.project_type] : deriveType(repo),
+    type: (db?.projectType && typeMap[db.projectType]) ? typeMap[db.projectType] : deriveType(repo),
     status: deriveStatus(repo),
     technologies: deriveTechnologies(repo),
     authors: deriveAuthors(repo),
