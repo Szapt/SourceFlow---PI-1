@@ -8,6 +8,8 @@ import {
   Search,
   Settings,
   LogOut,
+  Briefcase,
+  Compass,
 } from "lucide-react";
 import {
   Sidebar,
@@ -24,7 +26,8 @@ import {
 
 const main = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Proyectos", url: "/projects", icon: FolderGit2 },
+  { title: "Mi Proyecto", url: "/my-project", icon: Briefcase },
+  { title: "Explorar Proyectos", url: "/projects", icon: Compass },
   { title: "Documentación", url: "/docs", icon: BookOpen },
   { title: "Subir proyecto", url: "/new", icon: Upload },
 ];
