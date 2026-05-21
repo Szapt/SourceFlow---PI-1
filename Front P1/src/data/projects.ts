@@ -33,7 +33,7 @@ export interface Project {
 }
 
 export function parseGithubRepo(url: string): { owner: string; repo: string } | null {
-  const m = url.match(/github\.com[/:]([^/]+)\/([^/.]+)(?:\.git)?\/?$/);
+  const m = url.match(/github\.com[\/:]([^\/]+)\/([^/.]+)(?:\.git)?\/?$/);
   if (!m) return null;
   return { owner: m[1], repo: m[2] };
 }

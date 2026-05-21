@@ -13,6 +13,10 @@ public class UserEntity {
     private String name;
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column (unique = true, nullable = false)
+    private Long id;
+
     @Column(unique = true, nullable = false)
     private String email;
 

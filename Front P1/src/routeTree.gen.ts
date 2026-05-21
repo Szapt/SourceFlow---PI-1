@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as NewRouteImport } from './routes/new'
+import { Route as MyProjectRouteImport } from './routes/my-project'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as IndexRouteImport } from './routes/index'
@@ -30,6 +31,11 @@ const ProjectsRoute = ProjectsRouteImport.update({
 const NewRoute = NewRouteImport.update({
   id: '/new',
   path: '/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyProjectRoute = MyProjectRouteImport.update({
+  id: '/my-project',
+  path: '/my-project',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
   '/login': typeof LoginRoute
+  '/my-project': typeof MyProjectRoute
   '/new': typeof NewRoute
 <<<<<<< Updated upstream
   '/projects': typeof ProjectsRouteWithChildren
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
   '/login': typeof LoginRoute
+  '/my-project': typeof MyProjectRoute
   '/new': typeof NewRoute
 <<<<<<< Updated upstream
   '/projects': typeof ProjectsRouteWithChildren
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
   '/login': typeof LoginRoute
+  '/my-project': typeof MyProjectRoute
   '/new': typeof NewRoute
 <<<<<<< Updated upstream
   '/projects': typeof ProjectsRouteWithChildren
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/'
     | '/docs'
     | '/login'
+    | '/my-project'
     | '/new'
     | '/projects'
     | '/register'
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/'
     | '/docs'
     | '/login'
+    | '/my-project'
     | '/new'
     | '/projects'
     | '/register'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/'
     | '/docs'
     | '/login'
+    | '/my-project'
     | '/new'
     | '/projects'
 <<<<<<< Updated upstream
@@ -132,6 +144,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocsRoute: typeof DocsRoute
   LoginRoute: typeof LoginRoute
+  MyProjectRoute: typeof MyProjectRoute
   NewRoute: typeof NewRoute
 <<<<<<< Updated upstream
   ProjectsRoute: typeof ProjectsRouteWithChildren
@@ -163,6 +176,13 @@ declare module '@tanstack/react-router' {
       path: '/new'
       fullPath: '/new'
       preLoaderRoute: typeof NewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-project': {
+      id: '/my-project'
+      path: '/my-project'
+      fullPath: '/my-project'
+      preLoaderRoute: typeof MyProjectRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -200,6 +220,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRoute: DocsRoute,
   LoginRoute: LoginRoute,
+  MyProjectRoute: MyProjectRoute,
   NewRoute: NewRoute,
 <<<<<<< Updated upstream
   ProjectsRoute: ProjectsRouteWithChildren,

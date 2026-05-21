@@ -38,6 +38,8 @@ function LoginPage() {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+      const githubUsername = (result.user as any).reloadUserInfo?.screenName;
+      localStorage.setItem("github_username", githubUsername);
 
       const response = await fetch('http://localhost:8080/register/oauth', {
         method: 'POST',
@@ -49,6 +51,7 @@ function LoginPage() {
           githubName: (user as any).reloadUserInfo?.screenName
         })
       });
+
 
       if (!response.ok) {
         throw new Error("Error al autenticarse con GitHub.");

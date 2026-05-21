@@ -4,14 +4,13 @@ import { AppShell } from "@/components/AppShell";
 import { ProjectCard } from "@/components/ProjectCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
-  projects,
   courseColor,
   typeColor,
-  allTechnologies,
   ProjectStatus,
   Course,
   ProjectType,
 } from "@/data/projects";
+import { useGitHubRepos } from "@/hooks/useGitHubRepos";
 import {
   Search,
   LayoutGrid,
@@ -20,6 +19,8 @@ import {
   Star,
   GitFork,
   X,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -65,7 +66,17 @@ function ProjectsPage() {
   const [techs, setTechs] = useState<string[]>([]);
   const [q, setQ] = useState("");
 
-  const techList = useMemo(() => allTechnologies, []);
+  // ── Repositorios reales desde GitHub ──────────────────────────────────────
+  const username = typeof window !== "undefined"
+    ? localStorage.getItem("github_username")
+    : null;
+  const { projects, state, error, refetch } = useGitHubRepos({ username });
+
+  // Lista de tecnologías construida dinámicamente desde los repos obtenidos
+  const techList = useMemo(
+    () => Array.from(new Set(projects.flatMap((p) => p.technologies))).sort(),
+    [projects]
+  );
 
   const filtered = projects.filter((p) => {
     if (course !== "Todos" && p.course !== course) return false;
@@ -113,10 +124,22 @@ function ProjectsPage() {
           <div>
             <h1 className="font-serif text-3xl tracking-tight">Proyectos</h1>
             <p className="text-sm text-muted-foreground">
-              {filtered.length} de {projects.length} proyectos
+              {state === "loading"
+                ? "Cargando repositorios…"
+                : `${filtered.length} de ${projects.length} proyectos`}
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Botón sincronizar */}
+            <button
+              onClick={refetch}
+              disabled={state === "loading"}
+              title="Sincronizar repositorios"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground hover:bg-muted disabled:opacity-40"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", state === "loading" && "animate-spin")} />
+            </button>
+
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -149,6 +172,23 @@ function ProjectsPage() {
           </div>
         </div>
 
+        {/* Banner de error */}
+        {state === "error" && (
+          <div className="mt-4 flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium">No se pudieron cargar los repositorios</p>
+              <p className="mt-0.5 text-xs text-red-400/80">{error}</p>
+            </div>
+            <button
+              onClick={refetch}
+              className="shrink-0 rounded-md border border-red-500/40 px-2.5 py-1 text-xs font-medium hover:bg-red-500/20"
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="mt-6 space-y-3 rounded-xl border border-border bg-surface p-4">
           <div className="flex items-center justify-between">
@@ -168,12 +208,7 @@ function ProjectsPage() {
 
           <FilterRow label="Curso">
             {courses.map((c) => (
-              <Chip
-                key={c}
-                active={course === c}
-                onClick={() => setCourse(c)}
-                tone="green"
-              >
+              <Chip key={c} active={course === c} onClick={() => setCourse(c)} tone="green">
                 {c}
               </Chip>
             ))}
@@ -181,12 +216,7 @@ function ProjectsPage() {
 
           <FilterRow label="Tipo">
             {types.map((t) => (
-              <Chip
-                key={t}
-                active={type === t}
-                onClick={() => setType(t)}
-                tone="violet"
-              >
+              <Chip key={t} active={type === t} onClick={() => setType(t)} tone="violet">
                 {t}
               </Chip>
             ))}
@@ -194,159 +224,152 @@ function ProjectsPage() {
 
           <FilterRow label="Estado">
             {statuses.map((s) => (
-              <Chip
-                key={s}
-                active={status === s}
-                onClick={() => setStatus(s)}
-                tone="blue"
-              >
+              <Chip key={s} active={status === s} onClick={() => setStatus(s)} tone="blue">
                 {statusLbl[s]}
               </Chip>
             ))}
           </FilterRow>
 
-          <FilterRow label="Tecnologías">
-            {techList.map((t) => (
-              <Chip
-                key={t}
-                active={techs.includes(t)}
-                onClick={() => toggleTech(t)}
-                tone="mono"
-              >
-                {t}
-              </Chip>
-            ))}
-          </FilterRow>
+          {techList.length > 0 && (
+            <FilterRow label="Tecnologías">
+              {techList.map((t) => (
+                <Chip key={t} active={techs.includes(t)} onClick={() => toggleTech(t)} tone="mono">
+                  {t}
+                </Chip>
+              ))}
+            </FilterRow>
+          )}
         </div>
 
-        {/* Content */}
-        {view === "grid" ? (
+        {/* Skeleton de carga */}
+        {state === "loading" && (
           <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((p) => (
-              <ProjectCard key={p.id} project={p} />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-48 animate-pulse rounded-xl border border-border bg-surface" />
             ))}
           </div>
-        ) : (
-          <div className="mt-6 overflow-hidden rounded-xl border border-border bg-surface">
-            <table className="w-full text-sm">
-              <thead className="bg-surface-muted text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium">Proyecto</th>
-                  <th className="px-4 py-3 text-left font-medium">Curso</th>
-                  <th className="px-4 py-3 text-left font-medium">Tipo</th>
-                  <th className="px-4 py-3 text-left font-medium">Estado</th>
-                  <th className="px-4 py-3 text-left font-medium">Stack</th>
-                  <th className="px-4 py-3 text-left font-medium">Calidad</th>
-                  <th className="px-4 py-3 text-left font-medium">Autores</th>
-                  <th className="px-4 py-3 text-left font-medium">Actividad</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filtered.map((p) => (
-                  <tr key={p.id} className="hover:bg-muted/40">
-                    <td className="px-4 py-3">
-                      <Link
-                        to="/projects/$slug"
-                        params={{ slug: p.slug }}
-                        className="font-medium text-foreground hover:text-accent-green-deep"
-                      >
-                        {p.name}
-                      </Link>
-                      <p className="line-clamp-1 text-xs text-muted-foreground">
-                        {p.short}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={cn(
-                          "rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
-                          courseColor[p.course],
-                        )}
-                      >
-                        {p.course}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={cn(
-                          "rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
-                          typeColor[p.type],
-                        )}
-                      >
-                        {p.type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={p.status} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {p.technologies.slice(0, 3).map((t) => (
-                          <span
-                            key={t}
-                            className="rounded border border-border px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground"
-                          >
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full quality-bar"
-                            style={{ width: `${p.qualityScore}%` }}
-                          />
-                        </div>
-                        <span className="font-mono text-xs tabular-nums">
-                          {p.qualityScore}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex -space-x-1.5">
-                        {p.authors.map((a) => (
-                          <div
-                            key={a.initials}
-                            className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-br from-accent-green/80 to-accent-blue/70 text-[9px] font-semibold text-white ring-2 ring-surface"
-                          >
-                            {a.initials}
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1">
-                          <Star className="h-3 w-3" />
-                          {p.stars}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <GitFork className="h-3 w-3" />
-                          {p.forks}
-                        </span>
-                        <span>· {p.updatedAt}</span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        )}
+
+        {/* Estado vacío */}
+        {state === "success" && filtered.length === 0 && (
+          <div className="mt-12 grid place-items-center gap-2 text-center">
+            <p className="text-sm font-medium text-foreground">
+              {projects.length === 0
+                ? "No se encontraron proyectos registrados en la base de datos."
+                : "Ningún proyecto coincide con los filtros activos."}
+            </p>
+            {hasFilters && (
+              <button onClick={clearFilters} className="mt-2 text-xs text-accent-green-deep hover:underline">
+                Limpiar filtros
+              </button>
+            )}
           </div>
+        )}
+
+        {/* Content */}
+        {state === "success" && filtered.length > 0 && (
+          view === "grid" ? (
+            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {filtered.map((p) => (
+                <ProjectCard key={p.id} project={p} />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-6 overflow-hidden rounded-xl border border-border bg-surface">
+              <table className="w-full text-sm">
+                <thead className="bg-surface-muted text-xs uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium">Proyecto</th>
+                    <th className="px-4 py-3 text-left font-medium">Curso</th>
+                    <th className="px-4 py-3 text-left font-medium">Tipo</th>
+                    <th className="px-4 py-3 text-left font-medium">Estado</th>
+                    <th className="px-4 py-3 text-left font-medium">Stack</th>
+                    <th className="px-4 py-3 text-left font-medium">Calidad</th>
+                    <th className="px-4 py-3 text-left font-medium">Autores</th>
+                    <th className="px-4 py-3 text-left font-medium">Actividad</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filtered.map((p) => (
+                    <tr key={p.id} className="hover:bg-muted/40">
+                      <td className="px-4 py-3">
+                        <Link
+                          to="/projects/$slug"
+                          params={{ slug: p.slug }}
+                          className="font-medium text-foreground hover:text-accent-green-deep"
+                        >
+                          {p.name}
+                        </Link>
+                        <p className="line-clamp-1 text-xs text-muted-foreground">{p.short}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={cn("rounded-md px-1.5 py-0.5 text-[10px] font-semibold", courseColor[p.course])}>
+                          {p.course}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={cn("rounded-md px-1.5 py-0.5 text-[10px] font-semibold", typeColor[p.type])}>
+                          {p.type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={p.status} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {p.technologies.slice(0, 3).map((t) => (
+                            <span key={t} className="rounded border border-border px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+                            <div className="h-full quality-bar" style={{ width: `${p.qualityScore}%` }} />
+                          </div>
+                          <span className="font-mono text-xs tabular-nums">{p.qualityScore}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex -space-x-1.5">
+                          {p.authors.map((a) => (
+                            <div
+                              key={a.initials}
+                              className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-br from-accent-green/80 to-accent-blue/70 text-[9px] font-semibold text-white ring-2 ring-surface"
+                            >
+                              {a.initials}
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1">
+                            <Star className="h-3 w-3" />
+                            {p.stars}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <GitFork className="h-3 w-3" />
+                            {p.forks}
+                          </span>
+                          <span>· {p.updatedAt}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
         )}
       </div>
     </AppShell>
   );
 }
 
-function FilterRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5 border-t border-border pt-3 first-of-type:border-t-0 first-of-type:pt-0 md:flex-row md:items-center md:gap-3">
       <span className="w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -379,9 +402,7 @@ function Chip({
       onClick={onClick}
       className={cn(
         "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
-        active
-          ? activeStyles[tone]
-          : "border-border text-muted-foreground hover:bg-muted",
+        active ? activeStyles[tone] : "border-border text-muted-foreground hover:bg-muted",
         tone === "mono" && "font-mono",
       )}
     >

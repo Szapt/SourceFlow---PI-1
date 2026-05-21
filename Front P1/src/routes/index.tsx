@@ -13,7 +13,7 @@ import {
 
 export const Route = createFileRoute("/")({
   beforeLoad: () => {
-    if (!localStorage.getItem("isAuthenticated")) {
+    if (typeof window !== "undefined" && !localStorage.getItem("isAuthenticated")) {
       throw redirect({
         to: "/login",
       });
