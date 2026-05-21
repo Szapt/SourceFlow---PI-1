@@ -255,8 +255,8 @@ function ProjectsPage() {
           <div className="mt-12 grid place-items-center gap-2 text-center">
             <p className="text-sm font-medium text-foreground">
               {projects.length === 0
-                ? "No se encontraron proyectos registrados en la base de datos."
-                : "Ningún proyecto coincide con los filtros activos."}
+                ? "No se encontraron repositorios en tu cuenta de GitHub."
+                : "Ningún repositorio coincide con los filtros activos."}
             </p>
             {hasFilters && (
               <button onClick={clearFilters} className="mt-2 text-xs text-accent-green-deep hover:underline">
