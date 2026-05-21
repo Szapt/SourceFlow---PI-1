@@ -65,12 +65,8 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/my-project': typeof MyProjectRoute
   '/new': typeof NewRoute
-<<<<<<< Updated upstream
-  '/projects': typeof ProjectsRouteWithChildren
-  '/register': typeof RegisterRoute
-=======
   '/projects': typeof ProjectsRoute
->>>>>>> Stashed changes
+  '/register': typeof RegisterRoute
   '/projects/$slug': typeof ProjectsSlugRoute
 }
 export interface FileRoutesByTo {
@@ -79,12 +75,8 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/my-project': typeof MyProjectRoute
   '/new': typeof NewRoute
-<<<<<<< Updated upstream
-  '/projects': typeof ProjectsRouteWithChildren
-  '/register': typeof RegisterRoute
-=======
   '/projects': typeof ProjectsRoute
->>>>>>> Stashed changes
+  '/register': typeof RegisterRoute
   '/projects/$slug': typeof ProjectsSlugRoute
 }
 export interface FileRoutesById {
@@ -94,14 +86,9 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/my-project': typeof MyProjectRoute
   '/new': typeof NewRoute
-<<<<<<< Updated upstream
-  '/projects': typeof ProjectsRouteWithChildren
-  '/register': typeof RegisterRoute
-  '/projects/$slug': typeof ProjectsSlugRoute
-=======
   '/projects': typeof ProjectsRoute
+  '/register': typeof RegisterRoute
   '/projects_/$slug': typeof ProjectsSlugRoute
->>>>>>> Stashed changes
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -132,12 +119,8 @@ export interface FileRouteTypes {
     | '/my-project'
     | '/new'
     | '/projects'
-<<<<<<< Updated upstream
     | '/register'
-    | '/projects/$slug'
-=======
     | '/projects_/$slug'
->>>>>>> Stashed changes
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -146,13 +129,9 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MyProjectRoute: typeof MyProjectRoute
   NewRoute: typeof NewRoute
-<<<<<<< Updated upstream
-  ProjectsRoute: typeof ProjectsRouteWithChildren
-  RegisterRoute: typeof RegisterRoute
-=======
   ProjectsRoute: typeof ProjectsRoute
+  RegisterRoute: typeof RegisterRoute
   ProjectsSlugRoute: typeof ProjectsSlugRoute
->>>>>>> Stashed changes
 }
 
 declare module '@tanstack/react-router' {
@@ -222,13 +201,9 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MyProjectRoute: MyProjectRoute,
   NewRoute: NewRoute,
-<<<<<<< Updated upstream
-  ProjectsRoute: ProjectsRouteWithChildren,
-  RegisterRoute: RegisterRoute,
-=======
   ProjectsRoute: ProjectsRoute,
+  RegisterRoute: RegisterRoute,
   ProjectsSlugRoute: ProjectsSlugRoute,
->>>>>>> Stashed changes
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
