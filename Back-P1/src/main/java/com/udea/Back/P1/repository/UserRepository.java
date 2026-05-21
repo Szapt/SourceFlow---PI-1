@@ -5,7 +5,7 @@ import org.springframework.stereotype.Repository;
 import com.udea.Back.P1.entity.UserEntity;
 
 @Repository
-public interface UserRepository extends JpaRepository<UserEntity, String> {
+public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     UserEntity findByEmail(String email);
 
