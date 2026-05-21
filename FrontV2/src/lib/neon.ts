@@ -1,1 +1,0 @@
-export const projectDocuments = { get: (id:any, t:any) => undefined, upsert: (d:any) => {}, remove: (id:any, t:any) => {} }; export interface ProjectDocument { file_name: string; uploaded_at: string; file_url: string; } export type DocumentType = 'eap' | 'manifiesto';
