@@ -41,7 +41,7 @@ public class UserEntity {
     @Column(nullable = false)
     private String provider;
 
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "student")
     @JsonIgnore
     private List<ProjectTeamsEntity> projects = new ArrayList<>();
 }
