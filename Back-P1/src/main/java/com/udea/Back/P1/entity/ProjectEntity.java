@@ -1,5 +1,8 @@
 package com.udea.Back.P1.entity;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -10,7 +13,7 @@ public class ProjectEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column (unique = true, nullable = false)
+    @Column(unique = true, nullable = false)
     private Long id;
 
     @Column(nullable = false)
@@ -22,21 +25,33 @@ public class ProjectEntity {
     @Column(nullable = false, name = "repo_url")
     private String repoUrl;
 
-    @Column(nullable = false)
-    private Integer course;
+    @ManyToOne
+    @JoinColumn(name = "course", nullable = false)
+    private CourseEntity course;
 
-    @Column(nullable = false)
-    private Integer semester;
+    @ManyToOne
+    @JoinColumn(name = "semester", nullable = false)
+    private SemesterEntity semester;
 
-    @Column(nullable = false, name = "project_type")
-    private Integer projectType;
+    @ManyToOne
+    @JoinColumn(name = "project_type", nullable = false)
+    private ProjectTypeEntity type;
 
-    @Column(nullable = false)
-    private Integer state;
+    @ManyToOne
+    @JoinColumn(name = "state", nullable = false)
+    private ProjectStateEntity state;
 
     @Column(nullable = true, name = "manifest_url")
     private String manifestUrl;
 
-    @Column(nullable = false)
-    private Integer tutor;
+    @ManyToOne
+    @JoinColumn(name = "tutor", nullable = false)
+    private UserEntity tutor;
+
+    @OneToMany(mappedBy = "project")
+    private List<ProjectTeamsEntity> team = new ArrayList<>();
+
+    @ManyToMany
+    @JoinTable(name = "projects_technologies", joinColumns = @JoinColumn(name = "project_id"), inverseJoinColumns = @JoinColumn(name = "technology_id"))
+    private List<TechnologyEntity> technologies = new ArrayList<>();
 }

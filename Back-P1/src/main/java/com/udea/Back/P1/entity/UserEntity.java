@@ -1,5 +1,8 @@
 package com.udea.Back.P1.entity;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -14,7 +17,7 @@ public class UserEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column (unique = true, nullable = false)
+    @Column(unique = true, nullable = false)
     private Long id;
 
     @Column(unique = true, nullable = false)
@@ -31,11 +34,14 @@ public class UserEntity {
     @JsonIgnore
     private String githubUsername;
 
-    @Column(nullable = false)
-    @JsonIgnore
-    private int rol;
+    @ManyToOne
+    @JoinColumn(name = "role", nullable = true)
+    private RoleEntity role;
 
     @Column(nullable = false)
     private String provider;
 
+    @OneToMany(mappedBy = "user")
+    @JsonIgnore
+    private List<ProjectTeamsEntity> projects = new ArrayList<>();
 }
