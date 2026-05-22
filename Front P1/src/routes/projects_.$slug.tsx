@@ -28,6 +28,8 @@ import {
   ProjectDocument,
   DocumentType,
 } from "@/lib/neon";
+import { mapGitHubRepoToProject } from "@/hooks/mapGitHubRepoToProject";
+import { GitHubRepo } from "@/hooks/useGitHubRepos";
 import {
   ArrowLeft,
   ExternalLink,
@@ -47,11 +49,116 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface DBProject {
+  id: number;
+  name: string;
+  description: string | null;
+  repoUrl: string;
+  course: number | null;
+  semester: number | null;
+  projectType: number | null;
+  state: number | null;
+  manifestUrl: string | null;
+  tutor: number | null;
+}
+
+const BACKEND = "http://localhost:8080";
+
+function buildFallbackProject(db: DBProject): Project {
+  const parsed = parseGithubRepo(db.repoUrl);
+  const slug = parsed?.repo ?? String(db.id);
+
+  return {
+    id: String(db.id),
+    slug,
+    name: db.name,
+    short: db.description ?? "Sin descripción.",
+    course: "Independiente",
+    semester: db.semester ? String(db.semester) : "",
+    type: "Desarrollo",
+    status: "in_progress",
+    technologies: [],
+    authors: [{ name: slug, initials: slug.slice(0, 2).toUpperCase() }],
+    stars: 0,
+    forks: 0,
+    openIssues: 0,
+    qualityScore: 40,
+    updatedAt: "—",
+    repoUrl: db.repoUrl ? db.repoUrl.replace("https://", "") : "",
+    githubRepo: db.repoUrl ?? "",
+    testCoverage: 0,
+    activity: [],
+    documentationLevel: 0,
+  };
+}
+
 export const Route = createFileRoute("/projects_/$slug")({
-  loader: ({ params }): { project: Project } => {
-    const project = getProject(params.slug);
-    if (!project) throw notFound();
-    return { project };
+  loader: async ({ params }): Promise<{ project: Project }> => {
+    const slug = params.slug;
+
+    try {
+      // 1. Consultamos todos los proyectos de la base de datos Neon
+      const response = await fetch(`${BACKEND}/projects`);
+      if (!response.ok) {
+        throw new Error("Error al consultar proyectos en el backend");
+      }
+
+      const dbProjects: DBProject[] = await response.json();
+
+      // 2. Buscamos el proyecto que coincida por id o por nombre de repositorio (slug)
+      const foundDbProject = dbProjects.find((p) => {
+        if (String(p.id) === slug) return true;
+        const parsed = parseGithubRepo(p.repoUrl);
+        if (parsed && parsed.repo.toLowerCase() === slug.toLowerCase()) return true;
+        return false;
+      });
+
+      if (foundDbProject) {
+        const parsed = parseGithubRepo(foundDbProject.repoUrl);
+        if (parsed) {
+          try {
+            // 3. Enriquecemos dinámicamente con la API de GitHub en el loader
+            const ghRes = await fetch(
+              `https://api.github.com/repos/${parsed.owner}/${parsed.repo}`,
+              {
+                headers: {
+                  Accept: "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                },
+              }
+            );
+            if (ghRes.ok) {
+              const ghRepo: GitHubRepo = await ghRes.json();
+              ghRepo._db = {
+                id: foundDbProject.id,
+                name: foundDbProject.name,
+                description: foundDbProject.description,
+                repoUrl: foundDbProject.repoUrl,
+                course: foundDbProject.course,
+                semester: foundDbProject.semester,
+                projectType: foundDbProject.projectType,
+                state: foundDbProject.state,
+                manifestUrl: foundDbProject.manifestUrl,
+                tutor: foundDbProject.tutor,
+              };
+              const project = mapGitHubRepoToProject(ghRepo);
+              return { project };
+            }
+          } catch (e) {
+            console.error("Error al consultar GitHub en el loader:", e);
+          }
+        }
+        // Fallback si la API de GitHub falla o el repositorio es privado
+        return { project: buildFallbackProject(foundDbProject) };
+      }
+    } catch (e) {
+      console.warn("No se pudo cargar dinámicamente desde base de datos, usando mock data:", e);
+    }
+
+    // 4. Si no se encuentra en base de datos, recurrimos al mock local como respaldo
+    const mockProject = getProject(slug);
+    if (!mockProject) throw notFound();
+    return { project: mockProject };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -146,14 +253,18 @@ function ProjectDetail() {
             </div>
 
             <div className="mt-4 flex flex-wrap gap-1.5">
-              {project.technologies.map((t) => (
-                <span
-                  key={t}
-                  className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-mono text-muted-foreground"
-                >
-                  {t}
-                </span>
-              ))}
+              {project.technologies.length > 0 ? (
+                project.technologies.map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-mono text-muted-foreground"
+                  >
+                    {t}
+                  </span>
+                ))
+              ) : (
+                <span className="text-xs text-muted-foreground">Sin tecnologías registradas</span>
+              )}
             </div>
           </div>
 
@@ -347,7 +458,6 @@ function DocSlot({
   title: string;
   description: string;
 }) {
-  // local state used as a refresh trigger after upsert/delete
   const [tick, setTick] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const doc: ProjectDocument | undefined = (() => {
@@ -475,8 +585,8 @@ function AttributesCard({
     : 0;
   const langs = langQ.data
     ? Object.entries(langQ.data)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 6)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
     : [];
 
   return (

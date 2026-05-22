@@ -32,7 +32,8 @@ export interface Project {
   activity: ActivityItem[];
 }
 
-export function parseGithubRepo(url: string): { owner: string; repo: string } | null {
+export function parseGithubRepo(url: string | null | undefined): { owner: string; repo: string } | null {
+  if (!url) return null;
   const m = url.match(/github\.com[\/:]([^\/]+)\/([^/.]+)(?:\.git)?\/?$/);
   if (!m) return null;
   return { owner: m[1], repo: m[2] };

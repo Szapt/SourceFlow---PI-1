@@ -30,7 +30,8 @@ const GH_HEADERS: HeadersInit = {
 
 // Extrae owner y repo desde una URL de GitHub.
 // "https://github.com/MariAgudelo2/Poi-Bank" → { owner: "mariagudelo2", repo: "Poi-Bank" }
-function parseRepoPath(repoUrl: string): { owner: string; repo: string } | null {
+function parseRepoPath(repoUrl: string | null | undefined): { owner: string; repo: string } | null {
+  if (!repoUrl) return null;
   try {
     const cleaned = repoUrl.startsWith("http") ? repoUrl : `https://${repoUrl}`;
     const { pathname } = new URL(cleaned);
