@@ -31,6 +31,8 @@ interface BackendProjectResponse {
   stateName?: string;
   tutorName?: string;
   tutorEmail?: string;
+  submissionDate?: string;
+  isSubmissionAvailable?: boolean;
   technologies?: string[];
   studentNames?: string[];
 }
@@ -353,6 +355,8 @@ function mapBackendProject(data: BackendProjectResponse): Project {
     openIssues: 0,
     repoUrl,
     githubRepo,
+    submissionDate: data.submissionDate ?? undefined,
+    isSubmissionAvailable: data.isSubmissionAvailable ?? false,
     activity: [],
   };
 }

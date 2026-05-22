@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.List;
+import java.time.LocalDate;
 
 @Data
 @NoArgsConstructor
@@ -24,6 +25,10 @@ public class ProjectResponseDTO {
     // Datos del Tutor encargado
     private String tutorName;
     private String tutorEmail;
+
+    // Fechas y disponibilidad de envío
+    private LocalDate submissionDate;
+    private Boolean isSubmissionAvailable;
     
     // Listas simplificadas para romper el bucle infinito
     private List<String> technologies; // Solo los nombres de las tecnologías ["React", "Java"]

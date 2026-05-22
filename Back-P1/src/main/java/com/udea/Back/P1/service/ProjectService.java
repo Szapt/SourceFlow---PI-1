@@ -47,6 +47,19 @@ public class ProjectService {
         dto.setTutorName(project.getTutor() != null ? project.getTutor().getName() : null);
         dto.setTutorEmail(project.getTutor() != null ? project.getTutor().getEmail() : null);
 
+        if (project.getSemester() != null && project.getSemester().getFechaFin() != null) {
+            LocalDate submissionDate = project.getSemester().getFechaFin().minusDays(21);
+            LocalDate today = LocalDate.now();
+            
+            dto.setSubmissionDate(submissionDate);
+        
+            boolean isAvailable = today.isEqual(submissionDate) || today.isAfter(submissionDate);
+            dto.setIsSubmissionAvailable(isAvailable);
+        } else {
+            dto.setSubmissionDate(null);
+            dto.setIsSubmissionAvailable(false);
+        }
+
         List<String> technologyNames = project.getTechnologies().stream()
             .map(TechnologyEntity::getName)
             .toList();

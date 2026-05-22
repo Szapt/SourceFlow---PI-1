@@ -29,6 +29,8 @@ export interface Project {
   openIssues: number;
   repoUrl: string;
   githubRepo: string; // full URL https://github.com/owner/repo
+  submissionDate?: string;
+  isSubmissionAvailable?: boolean;
   activity: ActivityItem[];
 }
 
