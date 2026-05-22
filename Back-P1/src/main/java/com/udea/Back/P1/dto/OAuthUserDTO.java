@@ -8,5 +8,6 @@ public class OAuthUserDTO {
     private String name;
     private String provider;
     private String githubName;
+    private String githubToken;
     
 }

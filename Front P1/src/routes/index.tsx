@@ -1,7 +1,7 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { ProjectCard } from "@/components/ProjectCard";
-import { projects } from "@/data/projects";
+import { useGitHubRepos } from "@/hooks/useGitHubRepos";
 import {
   TrendingUp,
   FolderGit2,
@@ -9,6 +9,8 @@ import {
   Activity,
   ArrowUpRight,
   GitCommit,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -37,11 +39,13 @@ function Stat({
   value,
   delta,
   icon: Icon,
+  loading,
 }: {
   label: string;
   value: string;
   delta: string;
   icon: any;
+  loading?: boolean;
 }) {
   return (
     <div className="rounded-xl border border-border bg-surface p-5">
@@ -52,17 +56,37 @@ function Stat({
         <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
       <div className="mt-3 flex items-baseline gap-2">
-        <span className="font-serif text-3xl tracking-tight">{value}</span>
-        <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-accent-green-deep">
-          <TrendingUp className="h-3 w-3" />
-          {delta}
-        </span>
+        {loading ? (
+          <div className="h-8 w-12 animate-pulse rounded-md bg-muted" />
+        ) : (
+          <>
+            <span className="font-serif text-3xl tracking-tight">{value}</span>
+            <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-accent-green-deep">
+              <TrendingUp className="h-3 w-3" />
+              {delta}
+            </span>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 function Dashboard() {
+  const { projects, state, error, refetch } = useGitHubRepos();
+
+  const isLoading = state === "idle" || state === "loading";
+
+  // ── KPIs calculados desde datos reales ────────────────────────────────────
+  const activeCount = projects.filter((p) => p.status === "in_progress").length;
+  const completedCount = projects.filter((p) => p.status === "complete").length;
+  const totalStars = projects.reduce((sum, p) => sum + p.stars, 0);
+  const avgQuality =
+    projects.length > 0
+      ? Math.round(projects.reduce((sum, p) => sum + p.qualityScore, 0) / projects.length)
+      : 0;
+
+  // Primeros 4 proyectos como "destacados"
   const featured = projects.slice(0, 4);
 
   return (
@@ -88,12 +112,53 @@ function Dashboard() {
       </div>
 
       <div className="px-6 py-8 lg:px-10">
+        {/* Banner de error */}
+        {state === "error" && (
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium">No se pudieron cargar los proyectos</p>
+              <p className="mt-0.5 text-xs text-red-400/80">{error}</p>
+            </div>
+            <button
+              onClick={refetch}
+              className="shrink-0 rounded-md border border-red-500/40 px-2.5 py-1 text-xs font-medium hover:bg-red-500/20"
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
+
         {/* KPIs */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Stat label="Proyectos activos" value="48" delta="+6" icon={FolderGit2} />
-          <Stat label="Completados" value="127" delta="+12" icon={CheckCircle2} />
-          <Stat label="Contribuciones" value="312" delta="+24" icon={GitCommit} />
-          <Stat label="Cobertura promedio" value="71%" delta="+4%" icon={Activity} />
+          <Stat
+            label="Proyectos activos"
+            value={String(activeCount)}
+            delta={`${activeCount > 0 ? "+" : ""}${activeCount}`}
+            icon={FolderGit2}
+            loading={isLoading}
+          />
+          <Stat
+            label="Completados"
+            value={String(completedCount)}
+            delta={`${completedCount > 0 ? "+" : ""}${completedCount}`}
+            icon={CheckCircle2}
+            loading={isLoading}
+          />
+          <Stat
+            label="Estrellas totales"
+            value={String(totalStars)}
+            delta={`${totalStars > 0 ? "+" : ""}${totalStars}`}
+            icon={GitCommit}
+            loading={isLoading}
+          />
+          <Stat
+            label="Calidad promedio"
+            value={`${avgQuality}%`}
+            delta={`${avgQuality > 0 ? "+" : ""}${avgQuality}%`}
+            icon={Activity}
+            loading={isLoading}
+          />
         </div>
 
         {/* Featured projects */}
@@ -104,22 +169,65 @@ function Dashboard() {
                 Proyectos destacados
               </h2>
               <p className="text-sm text-muted-foreground">
-                Una selección curada del semestre
+                {isLoading
+                  ? "Cargando proyectos…"
+                  : `${projects.length} proyecto${projects.length !== 1 ? "s" : ""} en la plataforma`}
               </p>
             </div>
-            <Link
-              to="/projects"
-              className="inline-flex items-center gap-1 text-sm font-medium text-accent-green-deep hover:underline"
-            >
-              Ver todos
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={refetch}
+                disabled={isLoading}
+                title="Sincronizar"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-muted-foreground hover:bg-muted disabled:opacity-40"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+              </button>
+              <Link
+                to="/projects"
+                className="inline-flex items-center gap-1 text-sm font-medium text-accent-green-deep hover:underline"
+              >
+                Ver todos
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
           </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-2">
-            {featured.map((p) => (
-              <ProjectCard key={p.id} project={p} />
-            ))}
-          </div>
+
+          {/* Skeletons de carga */}
+          {isLoading && (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-48 animate-pulse rounded-xl border border-border bg-surface"
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Proyectos reales */}
+          {!isLoading && featured.length > 0 && (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-2">
+              {featured.map((p) => (
+                <ProjectCard key={p.id} project={p} />
+              ))}
+            </div>
+          )}
+
+          {/* Estado vacío */}
+          {state === "success" && projects.length === 0 && (
+            <div className="mt-12 grid place-items-center gap-2 text-center">
+              <p className="text-sm font-medium text-foreground">
+                No hay proyectos registrados en la plataforma aún.
+              </p>
+              <Link
+                to="/new"
+                className="mt-2 text-xs text-accent-green-deep hover:underline"
+              >
+                Sube el primero
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </AppShell>

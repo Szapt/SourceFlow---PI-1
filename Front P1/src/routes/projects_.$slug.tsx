@@ -28,6 +28,8 @@ import {
   ProjectDocument,
   DocumentType,
 } from "@/lib/neon";
+import { mapGitHubRepoToProject } from "@/hooks/mapGitHubRepoToProject";
+import { GitHubRepo } from "@/hooks/useGitHubRepos";
 import {
   ArrowLeft,
   ExternalLink,
@@ -46,12 +48,127 @@ import {
   Scale,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRouter } from "@tanstack/react-router";
+
+interface DBProject {
+  id: number;
+  name: string;
+  description: string | null;
+  repoUrl: string;
+  course: number | null;
+  semester: number | null;
+  projectType: number | null;
+  state: number | null;
+  manifestUrl: string | null;
+  tutor: number | null;
+}
+
+const BACKEND = "http://localhost:8080";
+
+/** Normaliza URLs de repo que vienen sin protocolo desde la BD.
+ *  "github.com/owner/repo" → "https://github.com/owner/repo" */
+function normalizeRepoUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const t = url.trim();
+  return t.startsWith("http://") || t.startsWith("https://") ? t : `https://${t}`;
+}
+
+function buildFallbackProject(db: DBProject): Project {
+  const normalized = normalizeRepoUrl(db.repoUrl);
+  const slug = String(db.id); // siempre ID numérico para que el refresh funcione
+
+  return {
+    id: String(db.id),
+    slug,
+    name: db.name,
+    short: db.description ?? "Sin descripción.",
+    course: "Independiente",
+    semester: db.semester ? String(db.semester) : "",
+    type: "Desarrollo",
+    status: "in_progress",
+    technologies: [],
+    authors: [{ name: db.name, initials: db.name.slice(0, 2).toUpperCase() }],
+    stars: 0,
+    forks: 0,
+    openIssues: 0,
+    qualityScore: 40,
+    documentationLevel: 0,
+    updatedAt: "—",
+    repoUrl: normalized?.replace("https://", "") ?? "",
+    githubRepo: normalized ?? "",  // URL completa necesaria para parseGithubRepo()
+    testCoverage: 0,
+    activity: [],
+  };
+}
 
 export const Route = createFileRoute("/projects_/$slug")({
-  loader: ({ params }): { project: Project } => {
-    const project = getProject(params.slug);
-    if (!project) throw notFound();
-    return { project };
+  loader: async ({ params }): Promise<{ project: Project }> => {
+    const slug = params.slug;
+
+    try {
+      const response = await fetch(`${BACKEND}/projects`);
+      if (!response.ok) throw new Error("Error al consultar proyectos en el backend");
+
+      const dbProjects: DBProject[] = await response.json();
+
+      // Buscar por ID numérico primero (cubre el caso de refresh)
+      let found = dbProjects.find((p) => String(p.id) === slug);
+
+      // Si no, buscar por nombre del repo en la URL (cubre navegación inicial)
+      if (!found) {
+        found = dbProjects.find((p) => {
+          const normalized = normalizeRepoUrl(p.repoUrl);
+          const parsed = normalized ? parseGithubRepo(normalized) : null;
+          return parsed?.repo.toLowerCase() === slug.toLowerCase();
+        });
+      }
+
+      if (found) {
+        const normalized = normalizeRepoUrl(found.repoUrl);
+        const parsed = normalized ? parseGithubRepo(normalized) : null;
+
+        if (parsed) {
+          try {
+            const ghRes = await fetch(
+              `https://api.github.com/repos/${parsed.owner}/${parsed.repo}`,
+              {
+                headers: {
+                  Accept: "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                },
+              }
+            );
+            if (ghRes.ok) {
+              const ghRepo: GitHubRepo = await ghRes.json();
+              ghRepo._db = {
+                id: found.id,
+                name: found.name,
+                description: found.description,
+                repoUrl: found.repoUrl,
+                course: found.course,
+                semester: found.semester,
+                projectType: found.projectType,
+                state: found.state,
+                manifestUrl: found.manifestUrl,
+                tutor: found.tutor,
+              };
+              // mapGitHubRepoToProject ya asigna slug = String(db.id)
+              // y githubRepo = repo.html_url (URL completa)
+              return { project: mapGitHubRepoToProject(ghRepo) };
+            }
+          } catch (e) {
+            console.error("Error al consultar GitHub:", e);
+          }
+        }
+        return { project: buildFallbackProject(found) };
+      }
+    } catch (e) {
+      console.warn("Error cargando desde base de datos:", e);
+    }
+
+    const mockProject = getProject(slug);
+    if (!mockProject) throw notFound();
+    return { project: mockProject };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -89,6 +206,9 @@ export const Route = createFileRoute("/projects_/$slug")({
 function ProjectDetail() {
   const { project } = Route.useLoaderData() as { project: Project };
   const gh = parseGithubRepo(project.githubRepo);
+  const router = useRouter();
+  // Estado local para forzar refresco visual (opcional, pero útil si hay caché)
+  const [refreshTick, setRefreshTick] = useState(0);
 
   return (
     <AppShell
@@ -146,26 +266,44 @@ function ProjectDetail() {
             </div>
 
             <div className="mt-4 flex flex-wrap gap-1.5">
-              {project.technologies.map((t) => (
-                <span
-                  key={t}
-                  className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-mono text-muted-foreground"
-                >
-                  {t}
-                </span>
-              ))}
+              {project.technologies.length > 0 ? (
+                project.technologies.map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] font-mono text-muted-foreground"
+                  >
+                    {t}
+                  </span>
+                ))
+              ) : (
+                <span className="text-xs text-muted-foreground">Sin tecnologías registradas</span>
+              )}
             </div>
           </div>
 
-          <a
-            href={project.githubRepo}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90"
-          >
-            <Github className="h-4 w-4" /> Abrir en GitHub
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
+          <div className="flex gap-2">
+            <a
+              href={project.githubRepo}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90"
+            >
+              <Github className="h-4 w-4" /> Abrir en GitHub
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+            <button
+              type="button"
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-muted"
+              onClick={async () => {
+                // Fuerza el refresco del loader de la ruta actual
+                await router.invalidate();
+                setRefreshTick((t) => t + 1);
+              }}
+              title="Refrescar metadata del repositorio"
+            >
+              <GitBranch className="h-4 w-4" /> Refrescar
+            </button>
+          </div>
         </div>
       </header>
 
@@ -347,7 +485,6 @@ function DocSlot({
   title: string;
   description: string;
 }) {
-  // local state used as a refresh trigger after upsert/delete
   const [tick, setTick] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const doc: ProjectDocument | undefined = (() => {
@@ -475,8 +612,8 @@ function AttributesCard({
     : 0;
   const langs = langQ.data
     ? Object.entries(langQ.data)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 6)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
     : [];
 
   return (
