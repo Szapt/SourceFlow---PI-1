@@ -42,7 +42,7 @@ public class AuthService {
         return passwordMatches;
     }
 
-    public UserEntity register(String email, String password, String name, String provider, String githubName) {
+    public UserEntity register(String email, String password, String name, String provider, String githubName, String githubToken) {
         UserEntity existing = userRepository.findByEmail(email);
 
         if (existing != null) {
@@ -62,6 +62,7 @@ public class AuthService {
         newUser.setProvider(provider);
         newUser.setRole(defaultRole);
         newUser.setGithubUsername(githubName);
+        newUser.setGithubToken(githubToken); // El token se actualizará después de la creación
         return userRepository.save(newUser);
     }
 

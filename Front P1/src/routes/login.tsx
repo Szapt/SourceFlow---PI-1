@@ -38,7 +38,8 @@ function LoginPage() {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      const githubUsername = (result.user as any).reloadUserInfo?.screenName;
+      const githubUsername = (result as any)._tokenResponse?.screenName;
+      const oauthAccessToken = (result as any)._tokenResponse?.oauthAccessToken;
       localStorage.setItem("github_username", githubUsername);
 
       const response = await fetch('http://localhost:8080/register/oauth', {
@@ -48,7 +49,8 @@ function LoginPage() {
           email: user.email,
           name: user.displayName,
           provider: 'github',
-          githubName: (user as any).reloadUserInfo?.screenName
+          githubName: (user as any).reloadUserInfo?.screenName,
+          githubToken: (result as any)._tokenResponse?.oauthAccessToken
         })
       });
 

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { CheckCircle2, Circle, X, Upload, Info } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/new")({
@@ -11,7 +11,7 @@ export const Route = createFileRoute("/new")({
       {
         name: "description",
         content:
-          "Publica un nuevo proyecto académico en el repositorio con validaciones de calidad mínima.",
+          "Publica un nuevo proyecto académico en el repositorio.",
       },
     ],
   }),
@@ -19,23 +19,100 @@ export const Route = createFileRoute("/new")({
 });
 
 function NewProjectPage() {
-  const [name, setName] = useState("");
-  const [desc, setDesc] = useState("");
-  const [course, setCourse] = useState("PI1");
-  const [techs, setTechs] = useState<string[]>(["React", "TypeScript"]);
-  const [techInput, setTechInput] = useState("");
-  const [repo, setRepo] = useState("");
-  const [readme, setReadme] = useState("");
+  const [repoUrl, setRepoUrl] = useState("");
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [repoData, setRepoData] = useState<any>(null);
+  const [userUsername, setUserUsername] = useState<string | null>(null);
 
-  const checks = [
-    { label: "Nombre claro (≥ 4 caracteres)", ok: name.trim().length >= 4 },
-    { label: "Descripción significativa (≥ 40 caracteres)", ok: desc.trim().length >= 40 },
-    { label: "Al menos 2 tecnologías declaradas", ok: techs.length >= 2 },
-    { label: "Enlace al repositorio válido", ok: /github\.com|gitlab\.com/.test(repo) },
-    { label: "README inicial (≥ 120 caracteres)", ok: readme.trim().length >= 120 },
-  ];
-  const passed = checks.filter((c) => c.ok).length;
-  const score = Math.round((passed / checks.length) * 100);
+  // Form fields after validation
+  const [course, setCourse] = useState("PI1");
+  const [semester, setSemester] = useState("2025-1");
+  const [techs, setTechs] = useState<string[]>([]);
+  const [techInput, setTechInput] = useState("");
+
+  async function validateAndLoadRepo() {
+    if (!repoUrl.trim()) {
+      setValidationError("Por favor ingresa una URL de repositorio");
+      return;
+    }
+
+    setIsValidating(true);
+    setValidationError(null);
+
+    try {
+      // Parse GitHub URL
+      const urlPattern = /github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/i;
+      const match = repoUrl.trim().match(urlPattern);
+
+      if (!match) {
+        setValidationError("URL inválida. Usa: https://github.com/usuario/repositorio");
+        setIsValidating(false);
+        return;
+      }
+
+      const owner = match[1];
+      const repo = match[2];
+
+      // Get current user's username from localStorage or auth
+      const currentUserEmail = typeof window !== "undefined" ? localStorage.getItem("userEmail") : null;
+      // You might need to fetch the username from your backend based on email
+      // For now, we'll try to get it from user data or assume it matches
+      let currentUsername = typeof window !== "undefined" ? (localStorage.getItem("github_username") || localStorage.getItem("userUsername")) : null;
+
+      // Validate repo exists on GitHub
+      const ghResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
+      
+      if (!ghResponse.ok) {
+        if (ghResponse.status === 404) {
+          setValidationError("Repositorio no encontrado en GitHub");
+        } else {
+          setValidationError("Error al validar repositorio en GitHub");
+        }
+        setIsValidating(false);
+        return;
+      }
+
+      const ghRepoData = await ghResponse.json();
+
+      // If we don't have the username yet, we need to get it from backend
+      if (!currentUsername && currentUserEmail) {
+        // Call your backend to get the username for this email
+        try {
+          const userResponse = await fetch(`http://localhost:8080/api/user/username`, {
+            headers: {
+              "X-User-Email": currentUserEmail,
+            },
+          });
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            currentUsername = userData.username;
+            localStorage.setItem("userUsername", currentUsername);
+          }
+        } catch (e) {
+          console.error("Could not fetch user username:", e);
+        }
+      }
+
+      // Verify owner matches current user
+      if (currentUsername && owner.toLowerCase() !== currentUsername.toLowerCase()) {
+        setValidationError(`El repositorio debe ser tuyo. Propietario: ${owner}, usuario actual: ${currentUsername}`);
+        setIsValidating(false);
+        return;
+      }
+
+      // Success
+      setRepoData(ghRepoData);
+      setUserUsername(owner);
+      setTechs([]); // Reset techs for new repo
+      setTechInput("");
+      setValidationError(null);
+    } catch (error: any) {
+      setValidationError(error.message || "Error al validar repositorio");
+    } finally {
+      setIsValidating(false);
+    }
+  }
 
   function addTech() {
     if (techInput.trim() && !techs.includes(techInput.trim())) {
@@ -44,55 +121,126 @@ function NewProjectPage() {
     }
   }
 
-  return (
-    <AppShell
-      breadcrumb={<span className="font-medium text-foreground">Subir proyecto</span>}
-    >
-      <div className="px-6 py-8 lg:px-10">
-        <div className="flex items-end justify-between gap-2">
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!repoData) return;
+
+    // TODO: Send to backend
+    console.log({
+      repo: repoUrl,
+      course,
+      semester,
+      techs,
+    });
+  }
+
+  // Phase 1: Repo URL input
+  if (!repoData) {
+    return (
+      <AppShell
+        breadcrumb={<span className="font-medium text-foreground">Nuevo proyecto</span>}
+      >
+        <div className="px-6 py-8 lg:px-10">
           <div>
             <h1 className="font-serif text-3xl tracking-tight">
               Publicar nuevo proyecto
             </h1>
             <p className="text-sm text-muted-foreground">
-              Documenta tu trabajo para que las próximas generaciones puedan
-              continuarlo.
+              Comienza por enlazar tu repositorio de GitHub.
             </p>
           </div>
-          <div className="hidden items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-xs md:flex">
-            <Info className="h-3.5 w-3.5 text-muted-foreground" />
-            Borrador guardado automáticamente
+
+          <div className="mt-12 flex justify-center">
+            <div className="w-full max-w-md space-y-6">
+              <Field label="Enlace del repositorio" required>
+                <input
+                  type="url"
+                  value={repoUrl}
+                  onChange={(e) => setRepoUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      validateAndLoadRepo();
+                    }
+                  }}
+                  placeholder="https://github.com/usuario/proyecto"
+                  className="input font-mono text-sm"
+                />
+              </Field>
+
+              {validationError && (
+                <div className="flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                  <p className="text-xs text-destructive">{validationError}</p>
+                </div>
+              )}
+
+              <button
+                onClick={validateAndLoadRepo}
+                disabled={isValidating || !repoUrl.trim()}
+                className={cn(
+                  "w-full h-10 rounded-md px-4 text-sm font-medium transition-all flex items-center justify-center gap-2",
+                  isValidating || !repoUrl.trim()
+                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                    : "bg-accent-blue text-white hover:opacity-90",
+                )}
+              >
+                {isValidating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Validando...
+                  </>
+                ) : (
+                  "Validar repositorio"
+                )}
+              </button>
+            </div>
           </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  // Phase 2: Additional fields after repo validation
+  return (
+    <AppShell
+      breadcrumb={<span className="font-medium text-foreground">Nuevo proyecto</span>}
+    >
+      <div className="px-6 py-8 lg:px-10">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="font-serif text-3xl tracking-tight">
+              Completar información
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Repositorio validado: <span className="font-mono text-foreground">{repoData.full_name}</span>
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setRepoData(null);
+              setRepoUrl("");
+              setCourse("PI1");
+              setSemester("2025-1");
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Cambiar repositorio
+          </button>
         </div>
 
         <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
           {/* Form */}
-          <form
-            className="space-y-6 lg:col-span-2"
-            onSubmit={(e) => e.preventDefault()}
-          >
-            <Field label="Nombre del proyecto" required>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ej. SIGMA — Sistema de asistencia"
-                className="input"
-              />
-            </Field>
-
-            <Field
-              label="Descripción corta"
-              hint={`${desc.length}/240 — explica el problema y la solución en una o dos frases`}
-              required
-            >
-              <textarea
-                value={desc}
-                onChange={(e) => setDesc(e.target.value.slice(0, 240))}
-                rows={3}
-                placeholder="Sistema de control de asistencia con reconocimiento facial…"
-                className="input resize-none"
-              />
-            </Field>
+          <form className="space-y-6 lg:col-span-2" onSubmit={handleSubmit}>
+            <div className="rounded-lg border border-accent-emerald/30 bg-accent-emerald/5 p-4 flex items-start gap-3">
+              <CheckCircle2 className="h-5 w-5 shrink-0 text-accent-emerald mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-foreground">Repositorio verificado</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {repoData.description || "Sin descripción"} • {repoData.stargazers_count} estrellas
+                </p>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="Curso" required>
@@ -115,8 +263,12 @@ function NewProjectPage() {
                 </div>
               </Field>
 
-              <Field label="Semestre">
-                <select className="input">
+              <Field label="Semestre" required>
+                <select
+                  value={semester}
+                  onChange={(e) => setSemester(e.target.value)}
+                  className="input"
+                >
                   <option>2025-1</option>
                   <option>2024-2</option>
                   <option>2024-1</option>
@@ -124,7 +276,7 @@ function NewProjectPage() {
               </Field>
             </div>
 
-            <Field label="Tecnologías" hint="Pulsa Enter para agregar" required>
+            <Field label="Tecnologías" hint="Pulsa Enter para agregar">
               <div className="flex flex-wrap gap-1.5 rounded-md border border-input bg-surface p-2 focus-within:border-accent-blue focus-within:ring-2 focus-within:ring-accent-blue/15">
                 {techs.map((t) => (
                   <span
@@ -149,97 +301,31 @@ function NewProjectPage() {
                       addTech();
                     }
                   }}
-                  placeholder="Agregar tecnología…"
+                  placeholder="Ej. React, TypeScript…"
                   className="min-w-[120px] flex-1 bg-transparent text-sm outline-none"
                 />
               </div>
             </Field>
 
-            <Field label="Enlace al repositorio" required>
-              <input
-                value={repo}
-                onChange={(e) => setRepo(e.target.value)}
-                placeholder="https://github.com/usuario/proyecto"
-                className="input font-mono text-xs"
-              />
-            </Field>
-
-            <Field
-              label="README / Documentación inicial"
-              hint={`${readme.length} caracteres — usa Markdown`}
-              required
-            >
-              <textarea
-                value={readme}
-                onChange={(e) => setReadme(e.target.value)}
-                rows={8}
-                placeholder={`# Mi Proyecto\n\n## Problema\n…\n\n## Solución\n…\n\n## Cómo correr\n\`\`\`bash\nbun install\nbun run dev\n\`\`\``}
-                className="input resize-y font-mono text-xs leading-relaxed"
-              />
-            </Field>
-
-            <div className="flex items-center justify-between border-t border-border pt-5">
-              <button type="button" className="text-sm text-muted-foreground hover:text-foreground">
-                Guardar borrador
+            <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
+              <button
+                type="button"
+                onClick={() => {
+                  setRepoData(null);
+                  setRepoUrl("");
+                }}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Cancelar
               </button>
               <button
                 type="submit"
-                disabled={passed < checks.length}
-                className={cn(
-                  "inline-flex h-10 items-center gap-2 rounded-md px-5 text-sm font-medium",
-                  passed === checks.length
-                    ? "bg-primary text-primary-foreground hover:opacity-90"
-                    : "cursor-not-allowed bg-muted text-muted-foreground",
-                )}
+                className="inline-flex h-10 items-center gap-2 rounded-md bg-accent-blue text-white px-5 text-sm font-medium hover:opacity-90 transition-opacity"
               >
-                <Upload className="h-4 w-4" />
                 Publicar proyecto
               </button>
             </div>
           </form>
-
-          {/* Quality side */}
-          <aside className="lg:sticky lg:top-20 lg:self-start">
-            <div className="rounded-xl border border-border bg-surface p-5">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Calidad mínima</h3>
-                <span className="font-mono text-sm tabular-nums">{score}%</span>
-              </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full transition-all"
-                  style={{
-                    width: `${score}%`,
-                    background:
-                      score === 100
-                        ? "var(--accent-emerald)"
-                        : score >= 60
-                          ? "var(--accent-amber)"
-                          : "var(--destructive)",
-                  }}
-                />
-              </div>
-              <ul className="mt-4 space-y-2.5">
-                {checks.map((c, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    {c.ok ? (
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent-emerald" />
-                    ) : (
-                      <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                    )}
-                    <span className={cn(c.ok ? "text-foreground" : "text-muted-foreground")}>
-                      {c.label}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              {passed < checks.length && (
-                <p className="mt-4 rounded-md bg-accent-amber/10 px-3 py-2 text-[11px] text-[oklch(0.45_0.13_75)]">
-                  Completa todos los criterios para publicar.
-                </p>
-              )}
-            </div>
-          </aside>
         </div>
       </div>
     </AppShell>
@@ -283,7 +369,6 @@ function Field({
           border-color: var(--accent-blue);
           box-shadow: 0 0 0 3px oklch(0.55 0.18 255 / 0.15);
         }
-        textarea.input { height: auto; padding: 0.625rem 0.75rem; line-height: 1.5; }
       `}</style>
     </div>
   );

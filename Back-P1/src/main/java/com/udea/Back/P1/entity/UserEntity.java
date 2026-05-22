@@ -26,9 +26,9 @@ public class UserEntity {
     @Column(nullable = false)
     private String password;
 
-    @Column(name = "github_id")
+    @Column(name = "github_token")
     @JsonIgnore
-    private Long githubId;
+    private String githubToken;
 
     @Column(name = "github_username")
     @JsonIgnore
