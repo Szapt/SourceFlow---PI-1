@@ -65,6 +65,9 @@ function RegisterPage() {
       });
       localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("userName", user.displayName || user.email?.split('@')[0] || "User");
+      if (user.email) {
+        localStorage.setItem("userEmail", user.email);
+      }
       navigate({ to: "/" });
     } catch (error: unknown) {
       console.error("Error al conectar con GitHub.", error);
@@ -99,6 +102,7 @@ function RegisterPage() {
       const data = await response.json();
       console.log("Usuario registrado:", data);
       localStorage.setItem("userName", data.name || name || "User");
+      localStorage.setItem("userEmail", email);
 
       handleRegisterSuccess();
     } catch (err: unknown) {
@@ -235,7 +239,7 @@ function RegisterPage() {
               <input
                 id="input-email"
                 type="email"
-                placeholder="usuario@universidad.edu.co"
+                placeholder="usuario@udea.edu.co"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

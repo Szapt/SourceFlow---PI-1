@@ -64,6 +64,9 @@ function LoginPage() {
       });
       localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("userName", user.displayName || user.email?.split('@')[0] || "User");
+      if (user.email) {
+        localStorage.setItem("userEmail", user.email);
+      }
       navigate({ to: "/" });
     } catch (error) {
       console.error("Error al conectar con GitHub.", error);
@@ -92,6 +95,7 @@ function LoginPage() {
       const data = await response.json();
       console.log("Usuario logueado:", data);
       localStorage.setItem("userName", data.name || "User");
+      localStorage.setItem("userEmail", data.email || email);
 
       handleLogin();
     } catch (err: unknown) {
@@ -215,7 +219,7 @@ function LoginPage() {
               <input
                 id="input-email"
                 type="email"
-                placeholder="usuario@universidad.edu.co"
+                placeholder="usuario@udea.edu.co"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
