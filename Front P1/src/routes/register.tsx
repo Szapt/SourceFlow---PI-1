@@ -100,7 +100,6 @@ function RegisterPage() {
       }
 
       const data = await response.json();
-      console.log("Usuario registrado:", data);
       localStorage.setItem("userName", data.name || name || "User");
       localStorage.setItem("userEmail", email);
 

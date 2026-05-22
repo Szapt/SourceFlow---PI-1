@@ -93,7 +93,6 @@ function LoginPage() {
       }
 
       const data = await response.json();
-      console.log("Usuario logueado:", data);
       localStorage.setItem("userName", data.name || "User");
       localStorage.setItem("userEmail", data.email || email);
 
