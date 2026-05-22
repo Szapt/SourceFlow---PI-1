@@ -58,17 +58,32 @@ function deriveAuthors(repo: GitHubRepo): Project["authors"] {
   return [{ name, initials: name.slice(0, 2).toUpperCase() }];
 }
 
+function computeDocumentationLevel(repo: GitHubRepo): number {
+  let score = 20;
+  if (repo.description && repo.description.length > 20) score += 20;
+  if (repo.topics.length > 0) score += 15;
+  if (repo.homepage) score += 10;
+  if (!repo.fork) score += 10;
+  if (repo.watchers_count > 0) score += Math.min(repo.watchers_count, 10);
+  if (repo.forks_count > 0) score += Math.min(repo.forks_count, 15);
+  return Math.min(score, 100);
+}
+
 // Mapeo de IDs numericos de la DB a los tipos del modelo interno
 const courseMap: Record<number, Course> = { 1: "PI1", 2: "PI2", 3: "Independiente" };
 const typeMap: Record<number, ProjectType> = { 1: "Investigativo", 2: "Desarrollo", 3: "Emprendimiento" };
 
 export function mapGitHubRepoToProject(repo: GitHubRepo): Project {
   const db = repo._db;
+  // Slug = ID numérico de la BD cuando existe, así el refresh siempre
+  // resuelve por `String(p.id) === slug` sin depender de parsear URLs.
+  const slug = db ? String(db.id) : repo.name;
+
   return {
     id: db ? String(db.id) : String(repo.id),
-    slug: repo.name,
+    slug,
     name: db?.name ?? repo.name,
-    short: db?.description ?? repo.description ?? "Sin descripcion.",
+    short: db?.description ?? repo.description ?? "Sin descripción.",
     course: (db?.course && courseMap[db.course]) ? courseMap[db.course] : deriveCourse(repo),
     semester: db?.semester ? String(db.semester) : "",
     type: (db?.projectType && typeMap[db.projectType]) ? typeMap[db.projectType] : deriveType(repo),
@@ -79,8 +94,13 @@ export function mapGitHubRepoToProject(repo: GitHubRepo): Project {
     forks: repo.forks_count,
     openIssues: repo.open_issues_count,
     qualityScore: computeQualityScore(repo),
+    documentationLevel: computeDocumentationLevel(repo),
     updatedAt: relativeDate(repo.updated_at),
+    // repoUrl: versión sin protocolo para mostrar en UI
     repoUrl: repo.html_url.replace("https://", ""),
+    // githubRepo: URL completa — usada por parseGithubRepo() en el detalle
+    // para lanzar las queries de README, commits y lenguajes
+    githubRepo: repo.html_url,
     testCoverage: 0,
     activity: [],
     isPrivate: repo.private,

@@ -48,6 +48,7 @@ import {
   Scale,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRouter } from "@tanstack/react-router";
 
 interface DBProject {
   id: number;
@@ -64,9 +65,17 @@ interface DBProject {
 
 const BACKEND = "http://localhost:8080";
 
+/** Normaliza URLs de repo que vienen sin protocolo desde la BD.
+ *  "github.com/owner/repo" → "https://github.com/owner/repo" */
+function normalizeRepoUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const t = url.trim();
+  return t.startsWith("http://") || t.startsWith("https://") ? t : `https://${t}`;
+}
+
 function buildFallbackProject(db: DBProject): Project {
-  const parsed = parseGithubRepo(db.repoUrl);
-  const slug = parsed?.repo ?? String(db.id);
+  const normalized = normalizeRepoUrl(db.repoUrl);
+  const slug = String(db.id); // siempre ID numérico para que el refresh funcione
 
   return {
     id: String(db.id),
@@ -78,17 +87,17 @@ function buildFallbackProject(db: DBProject): Project {
     type: "Desarrollo",
     status: "in_progress",
     technologies: [],
-    authors: [{ name: slug, initials: slug.slice(0, 2).toUpperCase() }],
+    authors: [{ name: db.name, initials: db.name.slice(0, 2).toUpperCase() }],
     stars: 0,
     forks: 0,
     openIssues: 0,
     qualityScore: 40,
+    documentationLevel: 0,
     updatedAt: "—",
-    repoUrl: db.repoUrl ? db.repoUrl.replace("https://", "") : "",
-    githubRepo: db.repoUrl ?? "",
+    repoUrl: normalized?.replace("https://", "") ?? "",
+    githubRepo: normalized ?? "",  // URL completa necesaria para parseGithubRepo()
     testCoverage: 0,
     activity: [],
-    documentationLevel: 0,
   };
 }
 
@@ -97,27 +106,29 @@ export const Route = createFileRoute("/projects_/$slug")({
     const slug = params.slug;
 
     try {
-      // 1. Consultamos todos los proyectos de la base de datos Neon
       const response = await fetch(`${BACKEND}/projects`);
-      if (!response.ok) {
-        throw new Error("Error al consultar proyectos en el backend");
-      }
+      if (!response.ok) throw new Error("Error al consultar proyectos en el backend");
 
       const dbProjects: DBProject[] = await response.json();
 
-      // 2. Buscamos el proyecto que coincida por id o por nombre de repositorio (slug)
-      const foundDbProject = dbProjects.find((p) => {
-        if (String(p.id) === slug) return true;
-        const parsed = parseGithubRepo(p.repoUrl);
-        if (parsed && parsed.repo.toLowerCase() === slug.toLowerCase()) return true;
-        return false;
-      });
+      // Buscar por ID numérico primero (cubre el caso de refresh)
+      let found = dbProjects.find((p) => String(p.id) === slug);
 
-      if (foundDbProject) {
-        const parsed = parseGithubRepo(foundDbProject.repoUrl);
+      // Si no, buscar por nombre del repo en la URL (cubre navegación inicial)
+      if (!found) {
+        found = dbProjects.find((p) => {
+          const normalized = normalizeRepoUrl(p.repoUrl);
+          const parsed = normalized ? parseGithubRepo(normalized) : null;
+          return parsed?.repo.toLowerCase() === slug.toLowerCase();
+        });
+      }
+
+      if (found) {
+        const normalized = normalizeRepoUrl(found.repoUrl);
+        const parsed = normalized ? parseGithubRepo(normalized) : null;
+
         if (parsed) {
           try {
-            // 3. Enriquecemos dinámicamente con la API de GitHub en el loader
             const ghRes = await fetch(
               `https://api.github.com/repos/${parsed.owner}/${parsed.repo}`,
               {
@@ -130,32 +141,31 @@ export const Route = createFileRoute("/projects_/$slug")({
             if (ghRes.ok) {
               const ghRepo: GitHubRepo = await ghRes.json();
               ghRepo._db = {
-                id: foundDbProject.id,
-                name: foundDbProject.name,
-                description: foundDbProject.description,
-                repoUrl: foundDbProject.repoUrl,
-                course: foundDbProject.course,
-                semester: foundDbProject.semester,
-                projectType: foundDbProject.projectType,
-                state: foundDbProject.state,
-                manifestUrl: foundDbProject.manifestUrl,
-                tutor: foundDbProject.tutor,
+                id: found.id,
+                name: found.name,
+                description: found.description,
+                repoUrl: found.repoUrl,
+                course: found.course,
+                semester: found.semester,
+                projectType: found.projectType,
+                state: found.state,
+                manifestUrl: found.manifestUrl,
+                tutor: found.tutor,
               };
-              const project = mapGitHubRepoToProject(ghRepo);
-              return { project };
+              // mapGitHubRepoToProject ya asigna slug = String(db.id)
+              // y githubRepo = repo.html_url (URL completa)
+              return { project: mapGitHubRepoToProject(ghRepo) };
             }
           } catch (e) {
-            console.error("Error al consultar GitHub en el loader:", e);
+            console.error("Error al consultar GitHub:", e);
           }
         }
-        // Fallback si la API de GitHub falla o el repositorio es privado
-        return { project: buildFallbackProject(foundDbProject) };
+        return { project: buildFallbackProject(found) };
       }
     } catch (e) {
-      console.warn("No se pudo cargar dinámicamente desde base de datos, usando mock data:", e);
+      console.warn("Error cargando desde base de datos:", e);
     }
 
-    // 4. Si no se encuentra en base de datos, recurrimos al mock local como respaldo
     const mockProject = getProject(slug);
     if (!mockProject) throw notFound();
     return { project: mockProject };
@@ -196,6 +206,9 @@ export const Route = createFileRoute("/projects_/$slug")({
 function ProjectDetail() {
   const { project } = Route.useLoaderData() as { project: Project };
   const gh = parseGithubRepo(project.githubRepo);
+  const router = useRouter();
+  // Estado local para forzar refresco visual (opcional, pero útil si hay caché)
+  const [refreshTick, setRefreshTick] = useState(0);
 
   return (
     <AppShell
@@ -268,15 +281,29 @@ function ProjectDetail() {
             </div>
           </div>
 
-          <a
-            href={project.githubRepo}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90"
-          >
-            <Github className="h-4 w-4" /> Abrir en GitHub
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
+          <div className="flex gap-2">
+            <a
+              href={project.githubRepo}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90"
+            >
+              <Github className="h-4 w-4" /> Abrir en GitHub
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+            <button
+              type="button"
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-muted"
+              onClick={async () => {
+                // Fuerza el refresco del loader de la ruta actual
+                await router.invalidate();
+                setRefreshTick((t) => t + 1);
+              }}
+              title="Refrescar metadata del repositorio"
+            >
+              <GitBranch className="h-4 w-4" /> Refrescar
+            </button>
+          </div>
         </div>
       </header>
 
