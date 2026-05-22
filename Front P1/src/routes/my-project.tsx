@@ -3,7 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DeliveryStatusCard } from "@/components/DeliveryStatusCard";
 
-import { getProject, courseColor, typeColor, Project } from "@/data/projects";
+import { courseColor, typeColor, parseGithubRepo, Project } from "@/data/projects";
 import {
   Briefcase,
   Github,
@@ -15,9 +15,25 @@ import {
   GitBranch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 
-// In a real app this would come from the authenticated user's session.
-const MY_PROJECT_SLUG = "sigma-attendance";
+const BACKEND = "http://localhost:8080";
+
+interface BackendProjectResponse {
+  id: number;
+  name: string;
+  description: string | null;
+  repoUrl: string;
+  manifestUrl?: string;
+  courseName?: string;
+  semesterName?: string;
+  typeName?: string;
+  stateName?: string;
+  tutorName?: string;
+  tutorEmail?: string;
+  technologies?: string[];
+  studentNames?: string[];
+}
 
 export const Route = createFileRoute("/my-project")({
   beforeLoad: () => {
@@ -37,21 +53,70 @@ export const Route = createFileRoute("/my-project")({
       },
     ],
   }),
-  loader: (): { project: Project | null } => ({
-    project: getProject(MY_PROJECT_SLUG) ?? null,
-  }),
   component: MyProjectPage,
 });
 
 function MyProjectPage() {
-  const { project } = Route.useLoaderData() as { project: Project | null };
+  const [project, setProject] = useState<Project | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadProject = async () => {
+      const userEmail = typeof window !== "undefined" ? localStorage.getItem("userEmail") : null;
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (userEmail) {
+        headers["X-User-Email"] = userEmail;
+      }
+
+      try {
+        const response = await fetch(`${BACKEND}/my-project`, {
+          headers,
+          method: "GET",
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error al cargar tu proyecto: ${response.status}`);
+        }
+
+        const text = await response.text();
+        const data: BackendProjectResponse | null = text.trim().length
+          ? JSON.parse(text)
+          : null;
+
+        if (data) {
+          setProject(mapBackendProject(data));
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProject();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <AppShell>
+        <div className="grid min-h-[60vh] place-items-center px-6 text-center">
+          <div className="max-w-md">
+            <p className="text-sm text-muted-foreground">Cargando tu proyecto...</p>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   if (!project) {
     return (
       <AppShell>
         <div className="grid min-h-[60vh] place-items-center px-6 text-center">
           <div className="max-w-md">
-            <h1 className="font-serif text-2xl">Aún no tienes un proyecto</h1>
+            <h1 className="font-serif text-2xl">Aún no has subido ningún proyecto en el semestre actual.</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Sube tu proyecto integrador para empezar a gestionarlo desde aquí.
             </p>
@@ -228,6 +293,68 @@ function MyProjectPage() {
       </div>
     </AppShell>
   );
+}
+
+function mapBackendProject(data: BackendProjectResponse): Project {
+  const githubRepo = data.repoUrl.startsWith("http")
+    ? data.repoUrl
+    : `https://${data.repoUrl}`;
+  const repoUrl = data.repoUrl.replace(/^https?:\/\//, "");
+  const parsed = parseGithubRepo(repoUrl);
+
+  const type =
+    data.typeName === "Investigativo" ||
+    data.typeName === "Desarrollo" ||
+    data.typeName === "Emprendimiento"
+      ? data.typeName
+      : "Desarrollo";
+
+  const course =
+    data.courseName === "PI1" ||
+    data.courseName === "PI2" ||
+    data.courseName === "Independiente"
+      ? data.courseName
+      : "Independiente";
+
+  const status = data.stateName?.toLowerCase().includes("desarrollo")
+    ? "in_progress"
+    : data.stateName?.toLowerCase().includes("complet")
+    ? "complete"
+    : "in_progress";
+
+  const authors = (data.studentNames?.length ? data.studentNames : [data.tutorName || "Equipo"]).map(
+    (name) => ({
+      name,
+      initials: name
+        .split(" ")
+        .map((word) => word[0]?.toUpperCase() ?? "")
+        .join("")
+        .slice(0, 2),
+    })
+  );
+
+  return {
+    id: String(data.id),
+    slug: parsed?.repo ?? String(data.id),
+    name: data.name,
+    short: data.description ?? "Sin descripción.",
+    course,
+    semester: data.semesterName ?? "",
+    type,
+    status,
+    technologies: data.technologies ?? [],
+    authors,
+    updatedAt: "Actualizado recientemente",
+    documentationLevel: 0,
+    qualityScore: 0,
+    testCoverage: 0,
+    stars: 0,
+    forks: 0,
+    openIssues: 0,
+    repoUrl,
+    githubRepo,
+    activity: [],
+  };
 }
 
 function ActionTile({

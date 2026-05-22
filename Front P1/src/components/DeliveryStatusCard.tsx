@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Send, CheckCircle2, Clock, FileText } from "lucide-react";
 import { Project } from "@/data/projects";
 import { cn } from "@/lib/utils";
@@ -8,8 +9,6 @@ export type FaseEntrega = "DESARROLLO" | "ENTREGA";
 const FORM_ENTREGA_URL =
   "https://docs.google.com/forms/d/e/1FAIpQLSctsz6K1_CM3SJwFamZprb9anCgJrVpdZJoCGotYCpSYiXlzQ/viewform?usp=header";
 
-const MANIFIESTO_PDF_URL = "https://www.africau.edu/images/default/sample.pdf";
-
 export function DeliveryStatusCard({
   project,
   defaultFase,
@@ -17,6 +16,7 @@ export function DeliveryStatusCard({
   project: Project;
   defaultFase?: FaseEntrega;
 }) {
+  const navigate = useNavigate();
   const initial: FaseEntrega =
     defaultFase ?? (project.slug === "gradehub" ? "ENTREGA" : "DESARROLLO");
   const [faseEntrega, setFaseEntrega] = useState<FaseEntrega>(initial);
@@ -49,7 +49,7 @@ export function DeliveryStatusCard({
         ) : (
           <Clock className="h-3.5 w-3.5" />
         )}
-        Estado: {isEntrega ? "Entrega Abierta" : "En desarrollo"}
+        Estado: {isEntrega ? "Entrega Abierta" : "En progreso"}
       </span>
 
       <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
@@ -69,15 +69,14 @@ export function DeliveryStatusCard({
           Realizar Entrega Final
         </a>
       ) : (
-        <a
-          href={MANIFIESTO_PDF_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
+          onClick={() => navigate({ to: "/docs" })}
           className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-muted"
         >
           <FileText className="h-4 w-4" />
-          Ver Plantilla del Manifiesto
-        </a>
+          ¿Qué contiene el Manifiesto?
+        </button>
       )}
     </div>
   );
