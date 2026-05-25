@@ -23,11 +23,7 @@ import {
   languageColor,
   GhCommit,
 } from "@/lib/github";
-import {
-  projectDocuments,
-  ProjectDocument,
-  DocumentType,
-} from "@/lib/neon";
+import { projectDocuments, ProjectDocument, DocumentType } from "@/lib/neon";
 import { mapGitHubRepoToProject } from "@/hooks/mapGitHubRepoToProject";
 import { GitHubRepo } from "@/hooks/useGitHubRepos";
 import {
@@ -95,7 +91,7 @@ function buildFallbackProject(db: DBProject): Project {
     documentationLevel: 0,
     updatedAt: "—",
     repoUrl: normalized?.replace("https://", "") ?? "",
-    githubRepo: normalized ?? "",  // URL completa necesaria para parseGithubRepo()
+    githubRepo: normalized ?? "", // URL completa necesaria para parseGithubRepo()
     testCoverage: 0,
     activity: [],
   };
@@ -207,7 +203,6 @@ function ProjectDetail() {
   const { project } = Route.useLoaderData() as { project: Project };
   const gh = parseGithubRepo(project.githubRepo);
   const router = useRouter();
-  // Estado local para forzar refresco visual (opcional, pero útil si hay caché)
   const [refreshTick, setRefreshTick] = useState(0);
 
   return (
@@ -246,7 +241,7 @@ function ProjectDetail() {
               <span
                 className={cn(
                   "rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                  courseColor[project.course],
+                  courseColor[project.course]
                 )}
               >
                 {project.course}
@@ -254,7 +249,7 @@ function ProjectDetail() {
               <span
                 className={cn(
                   "rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                  typeColor[project.type],
+                  typeColor[project.type]
                 )}
               >
                 {project.type}
@@ -312,7 +307,6 @@ function ProjectDetail() {
         <div className="space-y-10 lg:col-span-7">
           <ReadmeSection gh={gh} />
           <ActivitySection gh={gh} />
-          <DocsSection projectId={project.id} />
         </div>
 
         <aside className="lg:col-span-3">
@@ -447,143 +441,6 @@ function ActivitySection({
         )}
       </div>
     </section>
-  );
-}
-
-/* ── EAP & Manifiesto ──────────────────────────────────────────────── */
-
-function DocsSection({ projectId }: { projectId: string }) {
-  return (
-    <section>
-      <SectionTitle icon={ClipboardCheck}>EAP y Manifiesto de Entrega</SectionTitle>
-      <div className="space-y-4">
-        <DocSlot
-          projectId={projectId}
-          type="eap"
-          title="EAP — Estructura de Análisis del Proyecto"
-          description="Documento que detalla el análisis estructural del proyecto."
-        />
-        <DocSlot
-          projectId={projectId}
-          type="manifiesto"
-          title="Manifiesto de Entrega"
-          description="Documento formal de entrega final del proyecto."
-        />
-      </div>
-    </section>
-  );
-}
-
-function DocSlot({
-  projectId,
-  type,
-  title,
-  description,
-}: {
-  projectId: string;
-  type: DocumentType;
-  title: string;
-  description: string;
-}) {
-  const [tick, setTick] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const doc: ProjectDocument | undefined = (() => {
-    void tick;
-    return projectDocuments.get(projectId, type);
-  })();
-
-  const onFile = async (file: File) => {
-    if (!/\.(pdf|docx?)$/i.test(file.name)) {
-      alert("Solo se permiten archivos PDF o DOCX.");
-      return;
-    }
-    const dataUrl = await fileToDataUrl(file);
-    projectDocuments.upsert({
-      project_id: projectId,
-      type,
-      file_name: file.name,
-      file_url: dataUrl,
-    });
-    setTick((t) => t + 1);
-  };
-
-  return (
-    <div className="rounded-xl border border-border bg-surface p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold">{title}</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-        </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".pdf,.doc,.docx"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onFile(f);
-            e.target.value = "";
-          }}
-        />
-      </div>
-
-      {doc ? (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface-muted px-4 py-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-accent-green-soft text-accent-green-deep">
-              <FileText className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{doc.file_name}</p>
-              <p className="text-[11px] text-muted-foreground">
-                Subido {relativeTime(doc.uploaded_at)}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <a
-              href={doc.file_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-muted"
-            >
-              <Eye className="h-3.5 w-3.5" /> Ver documento
-            </a>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-2 text-muted-foreground hover:text-destructive"
-              onClick={() => {
-                projectDocuments.remove(projectId, type);
-                setTick((t) => t + 1);
-              }}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8"
-              onClick={() => inputRef.current?.click()}
-            >
-              <Upload className="h-3.5 w-3.5" /> Reemplazar
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="mt-4 flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-surface-muted px-4 py-8 text-center transition-colors hover:border-accent-green hover:bg-accent-green-soft/30"
-        >
-          <Upload className="h-6 w-6 text-muted-foreground" />
-          <p className="text-sm font-medium">Subir archivo PDF o DOCX</p>
-          <p className="text-xs text-muted-foreground">
-            Aún no se ha subido el documento. Haz clic para seleccionar.
-          </p>
-        </button>
-      )}
-    </div>
   );
 }
 
