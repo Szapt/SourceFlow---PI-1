@@ -1,8 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { CheckCircle2, AlertCircle, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const BACKEND = "http://localhost:8080";
+
+interface Course {
+  id: number;
+  name: string;
+  description?: string;
+}
+
+interface Semester {
+  id: number;
+  name: string;
+  startDate: string;
+  fechaFin: string;
+}
 
 export const Route = createFileRoute("/new")({
   head: () => ({
@@ -25,11 +42,43 @@ function NewProjectPage() {
   const [repoData, setRepoData] = useState<any>(null);
   const [userUsername, setUserUsername] = useState<string | null>(null);
 
+  // Cargar cursos y semestres dinámicamente
+  const coursesQ = useQuery({
+    queryKey: ["courses"],
+    queryFn: async () => {
+      const res = await fetch(`${BACKEND}/projects/lookup/courses`);
+      if (!res.ok) throw new Error("Error al cargar cursos");
+      return res.json() as Promise<Course[]>;
+    },
+  });
+
+  const semestersQ = useQuery({
+    queryKey: ["semesters"],
+    queryFn: async () => {
+      const res = await fetch(`${BACKEND}/projects/lookup/semesters`);
+      if (!res.ok) throw new Error("Error al cargar semestres");
+      return res.json() as Promise<Semester[]>;
+    },
+  });
+
   // Form fields after validation
-  const [course, setCourse] = useState("PI1");
-  const [semester, setSemester] = useState("2025-1");
+  const [course, setCourse] = useState<string | null>(null);
+  const [semester, setSemester] = useState<string | null>(null);
   const [techs, setTechs] = useState<string[]>([]);
   const [techInput, setTechInput] = useState("");
+
+  // Set default values cuando carguen cursos y semestres
+  React.useEffect(() => {
+    if (coursesQ.data && coursesQ.data.length > 0 && !course) {
+      setCourse(coursesQ.data[0].name);
+    }
+  }, [coursesQ.data, course]);
+
+  React.useEffect(() => {
+    if (semestersQ.data && semestersQ.data.length > 0 && !semester) {
+      setSemester(semestersQ.data[0].name);
+    }
+  }, [semestersQ.data, semester]);
 
   async function validateAndLoadRepo() {
     if (!repoUrl.trim()) {
@@ -220,8 +269,8 @@ function NewProjectPage() {
             onClick={() => {
               setRepoData(null);
               setRepoUrl("");
-              setCourse("PI1");
-              setSemester("2025-1");
+              setCourse(coursesQ.data?.[0]?.name ?? null);
+              setSemester(semestersQ.data?.[0]?.name ?? null);
             }}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -245,33 +294,47 @@ function NewProjectPage() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="Curso" required>
                 <div className="flex gap-1.5">
-                  {["PI1", "PI2", "PI3", "TG"].map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setCourse(c)}
-                      className={cn(
-                        "flex-1 rounded-md border px-2 py-2 text-sm font-medium transition-colors",
-                        course === c
-                          ? "border-accent-blue bg-accent-blue/10 text-accent-blue"
-                          : "border-border hover:bg-muted",
-                      )}
-                    >
-                      {c}
-                    </button>
-                  ))}
+                  {coursesQ.isLoading ? (
+                    <div className="text-xs text-muted-foreground">Cargando cursos...</div>
+                  ) : coursesQ.isError ? (
+                    <div className="text-xs text-destructive">Error al cargar cursos</div>
+                  ) : (
+                    coursesQ.data?.map((c: Course) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setCourse(c.name)}
+                        className={cn(
+                          "flex-1 rounded-md border px-2 py-2 text-sm font-medium transition-colors",
+                          course === c.name
+                            ? "border-accent-blue bg-accent-blue/10 text-accent-blue"
+                            : "border-border hover:bg-muted",
+                        )}
+                      >
+                        {c.name}
+                      </button>
+                    ))
+                  )}
                 </div>
               </Field>
 
               <Field label="Semestre" required>
                 <select
-                  value={semester}
+                  value={semester ?? ""}
                   onChange={(e) => setSemester(e.target.value)}
                   className="input"
                 >
-                  <option>2025-1</option>
-                  <option>2024-2</option>
-                  <option>2024-1</option>
+                  {semestersQ.isLoading ? (
+                    <option>Cargando semestres...</option>
+                  ) : semestersQ.isError ? (
+                    <option>Error al cargar semestres</option>
+                  ) : (
+                    semestersQ.data?.map((s: Semester) => (
+                      <option key={s.id} value={s.name}>
+                        {s.name}
+                      </option>
+                    ))
+                  )}
                 </select>
               </Field>
             </div>

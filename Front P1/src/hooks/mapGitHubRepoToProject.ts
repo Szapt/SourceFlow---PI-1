@@ -93,10 +93,22 @@ export function mapGitHubRepoToProject(repo: GitHubRepo): Project {
     })(),
     status: (() => {
       const name = dbReferenceName(db?.state);
-      if (name === "complete" || name === "in_progress" || name === "abandoned") return name as ProjectStatus;
+      const id = dbReferenceId(db?.state);
+      const lower = (name ?? "").toLowerCase().trim();
+      // Direct mapping when the DB already stores canonical frontend values
+      if (lower === "complete" || lower === "in_progress" || lower === "abandoned") return lower as ProjectStatus;
+      // Map Spanish names from the DB to frontend values
+      if (lower === "completado") return "complete" as ProjectStatus;
+      if (lower === "en progreso" || lower === "enprogreso" || lower === "incompleto") return "in_progress" as ProjectStatus;
+      if (lower === "abandonado") return "abandoned" as ProjectStatus;
+      // Map numeric IDs (DB): 1=completado, 2=en progreso, 3=abandonado, 4=incompleto
+      const stateMap: Record<number, ProjectStatus> = { 1: "complete", 2: "in_progress", 3: "abandoned", 4: "in_progress" };
+      if (id != null && stateMap[id]) return stateMap[id];
       return deriveStatus(repo);
     })(),
-    technologies: deriveTechnologies(repo),
+    technologies: db?.technologies && Array.isArray(db.technologies) && db.technologies.length > 0
+      ? db.technologies
+      : deriveTechnologies(repo),
     authors: deriveAuthors(repo),
     stars: repo.stargazers_count,
     forks: repo.forks_count,
@@ -107,6 +119,7 @@ export function mapGitHubRepoToProject(repo: GitHubRepo): Project {
     // githubRepo: URL completa — usada por parseGithubRepo() en el detalle
     // para lanzar las queries de README, commits y lenguajes
     githubRepo: repo.html_url,
+    manifestUrl: db?.manifestUrl ?? "",
     testCoverage: 0,
     activity: [],
     isPrivate: repo.private,

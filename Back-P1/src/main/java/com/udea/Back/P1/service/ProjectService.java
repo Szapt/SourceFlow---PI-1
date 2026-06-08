@@ -73,4 +73,17 @@ public class ProjectService {
 
         return dto;
     }
+
+    @Transactional(readOnly = true)
+    public java.util.List<ProjectResponseDTO> getAllProjectsDto() {
+        return projectRepository.findAll()
+                .stream()
+                .map(this::mapToDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<ProjectResponseDTO> getProjectDtoById(Long id) {
+        return projectRepository.findById(id).map(this::mapToDto);
+    }
 }

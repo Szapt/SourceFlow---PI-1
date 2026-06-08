@@ -200,10 +200,67 @@ export const Route = createFileRoute("/projects_/$slug")({
 });
 
 function ProjectDetail() {
-  const { project } = Route.useLoaderData() as { project: Project };
-  const gh = parseGithubRepo(project.githubRepo);
+  const { project: initialProject } = Route.useLoaderData() as { project: Project };
   const router = useRouter();
   const [refreshTick, setRefreshTick] = useState(0);
+
+  // Cargar proyecto dinámicamente desde el backend para que refleje cambios
+  const projectQ = useQuery({
+    queryKey: ["projects", initialProject.id, refreshTick],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`${BACKEND}/projects`);
+        if (!response.ok) throw new Error("Error al consultar proyectos");
+        const dbProjects: DBProject[] = await response.json();
+        
+        // Buscar por ID
+        const found = dbProjects.find((p) => String(p.id) === initialProject.id);
+        if (!found) return initialProject;
+
+        const normalized = normalizeRepoUrl(found.repoUrl);
+        const parsed = normalized ? parseGithubRepo(normalized) : null;
+
+        if (parsed) {
+          try {
+            const ghRes = await fetch(
+              `https://api.github.com/repos/${parsed.owner}/${parsed.repo}`,
+              {
+                headers: {
+                  Accept: "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                },
+              }
+            );
+            if (ghRes.ok) {
+              const ghRepo: GitHubRepo = await ghRes.json();
+              ghRepo._db = {
+                id: found.id,
+                name: found.name,
+                description: found.description,
+                repoUrl: found.repoUrl,
+                course: found.course,
+                semester: found.semester,
+                projectType: found.projectType,
+                state: found.state,
+                manifestUrl: found.manifestUrl,
+                tutor: found.tutor,
+              };
+              return mapGitHubRepoToProject(ghRepo);
+            }
+          } catch (e) {
+            console.error("Error al consultar GitHub:", e);
+          }
+        }
+        return buildFallbackProject(found);
+      } catch (e) {
+        console.error("Error refrescando proyecto:", e);
+        return initialProject;
+      }
+    },
+  });
+
+  const project = projectQ.data ?? initialProject;
+  const gh = parseGithubRepo(project.githubRepo);
 
   return (
     <AppShell
@@ -289,11 +346,7 @@ function ProjectDetail() {
             <button
               type="button"
               className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-muted"
-              onClick={async () => {
-                // Fuerza el refresco del loader de la ruta actual
-                await router.invalidate();
-                setRefreshTick((t) => t + 1);
-              }}
+              onClick={() => setRefreshTick((t) => t + 1)}
               title="Refrescar metadata del repositorio"
             >
               <GitBranch className="h-4 w-4" /> Refrescar
@@ -346,10 +399,10 @@ function ReadmeSection({ gh }: { gh: { owner: string; repo: string } | null }) {
             Este repositorio no tiene un README disponible.
           </EmptyState>
         )}
-        {q.data && (
+            {q.data && (
           <article className="prose-doc max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {decodeBase64Utf8(q.data.content)}
+              {decodeBase64Utf8((q.data as any).content)}
             </ReactMarkdown>
           </article>
         )}
@@ -398,9 +451,9 @@ function ActivitySection({
             <EmptyState>No hay actividad reciente en este repositorio.</EmptyState>
           </div>
         )}
-        {q.data && q.data.length > 0 && (
+            {q.data && (q.data as GhCommit[]).length > 0 && (
           <ul className="divide-y divide-border">
-            {q.data.map((c: GhCommit) => (
+            {(q.data as GhCommit[]).map((c: GhCommit) => (
               <li key={c.sha} className="flex items-start gap-3 px-4 py-3">
                 {c.author?.avatar_url ? (
                   <img
@@ -464,14 +517,11 @@ function AttributesCard({
     enabled: !!gh,
   });
 
-  const totalLang = langQ.data
-    ? Object.values(langQ.data).reduce((s, n) => s + n, 0)
-    : 0;
-  const langs = langQ.data
-    ? Object.entries(langQ.data)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-    : [];
+  const langData = (langQ.data ?? {}) as Record<string, number>;
+  const totalLang = Object.values(langData).reduce((s, n) => s + (n || 0), 0);
+  const langs = Object.entries(langData)
+    .sort((a, b) => (b[1] || 0) - (a[1] || 0))
+    .slice(0, 6);
 
   return (
     <div className="space-y-4">
@@ -499,14 +549,14 @@ function AttributesCard({
               <GitBranch className="h-3.5 w-3.5" /> Rama
             </span>
             <span className="font-mono text-xs">
-              {repoQ.data?.default_branch ?? <Skeleton className="inline-block h-3 w-12" />}
+              {(repoQ.data as any)?.default_branch ?? <Skeleton className="inline-block h-3 w-12" />}
             </span>
           </li>
           <li className="flex items-center justify-between gap-2">
             <span className="text-muted-foreground">Último push</span>
             <span className="text-xs">
               {repoQ.data ? (
-                relativeTime(repoQ.data.pushed_at)
+                relativeTime((repoQ.data as any).pushed_at)
               ) : (
                 <Skeleton className="inline-block h-3 w-16" />
               )}
@@ -517,7 +567,7 @@ function AttributesCard({
               <Star className="h-3.5 w-3.5" /> Stars
             </span>
             <span className="font-mono text-xs">
-              {repoQ.data?.stargazers_count ?? "—"}
+              {(repoQ.data as any)?.stargazers_count ?? "—"}
             </span>
           </li>
           <li className="flex items-center justify-between gap-2">
@@ -525,7 +575,7 @@ function AttributesCard({
               <GitFork className="h-3.5 w-3.5" /> Forks
             </span>
             <span className="font-mono text-xs">
-              {repoQ.data?.forks_count ?? "—"}
+              {(repoQ.data as any)?.forks_count ?? "—"}
             </span>
           </li>
           <li className="flex items-center justify-between gap-2">
@@ -533,18 +583,35 @@ function AttributesCard({
               <AlertCircle className="h-3.5 w-3.5" /> Issues abiertos
             </span>
             <span className="font-mono text-xs">
-              {repoQ.data?.open_issues_count ?? "—"}
+              {(repoQ.data as any)?.open_issues_count ?? "—"}
             </span>
           </li>
-          {repoQ.data?.license && (
+          {(repoQ.data as any)?.license && (
             <li className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2 text-muted-foreground">
                 <Scale className="h-3.5 w-3.5" /> Licencia
               </span>
-              <span className="text-xs">{repoQ.data.license.spdx_id}</span>
+              <span className="text-xs">{(repoQ.data as any).license?.spdx_id}</span>
             </li>
           )}
         </ul>
+      </div>
+
+      {/* Manifiesto de entrega */}
+      <div className="rounded-xl border border-border bg-surface p-5">
+        <h3 className="mb-3 text-sm font-semibold">Manifiesto de entrega</h3>
+        {project.manifestUrl ? (
+          <a
+            href={project.manifestUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-95"
+          >
+            Ver manifiesto de entrega
+          </a>
+        ) : (
+          <p className="text-xs text-muted-foreground">No hay manifiesto disponible.</p>
+        )}
       </div>
 
       {/* Lenguajes */}

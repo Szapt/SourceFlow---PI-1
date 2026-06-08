@@ -25,6 +25,7 @@ interface DBProject {
   state: DbReference;
   manifestUrl: string | null;
   tutor: DbReference;
+  technologies?: string[];
 }
 
 function dbReferenceName(ref: DbReference): string {
@@ -115,7 +116,24 @@ export function useGitHubRepos(_options?: {
       if (!dbRes.ok) {
         throw new Error(`Error al obtener proyectos del servidor: ${dbRes.status}`);
       }
-      const dbProjects: DBProject[] = await dbRes.json();
+      // Backend now returns flattened DTOs (ProjectResponseDTO) with fields like
+      // `semesterName`, `typeName`, `stateName`, `courseName`, `technologies`.
+      // Normalize into the DBProject shape expected by the rest of the flow.
+      const raw = await dbRes.json();
+      const dbProjects: DBProject[] = (raw || []).map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        description: r.description ?? null,
+        repoUrl: r.repoUrl ?? r.repo_url ?? "",
+        // Prefer flattened names from DTO; fall back to legacy relational shape
+        course: r.courseName ?? r.course ?? null,
+        semester: r.semesterName ?? r.semester ?? null,
+        projectType: r.typeName ?? r.projectType ?? null,
+        state: r.stateName ?? r.state ?? null,
+        manifestUrl: r.manifestUrl ?? r.manifest_url ?? null,
+        tutor: r.tutor ?? null,
+        technologies: r.technologies ?? undefined,
+      }));
 
       if (dbProjects.length === 0) return [];
 

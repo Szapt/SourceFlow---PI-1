@@ -4,16 +4,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { DeliveryStatusCard } from "@/components/DeliveryStatusCard";
 
 import { courseColor, typeColor, parseGithubRepo, Project } from "@/data/projects";
-import {
-  Briefcase,
-  Github,
-  ExternalLink,
-  Settings2,
-  Upload,
-  PencilLine,
-  Users,
-  GitBranch,
-} from "lucide-react";
+import { Briefcase, Github, ExternalLink, Settings2, Upload, PencilLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
@@ -217,21 +208,6 @@ function MyProjectPage() {
                 title="Editar detalles"
                 description="Actualiza descripción, stack y autores."
               />
-              <ActionTile
-                icon={Upload}
-                title="Subir documento"
-                description="Adjunta el manifiesto o anexos."
-              />
-              <ActionTile
-                icon={Users}
-                title="Gestionar equipo"
-                description="Invita o remueve colaboradores."
-              />
-              <ActionTile
-                icon={GitBranch}
-                title="Sincronizar GitHub"
-                description="Refresca commits, issues y README."
-              />
             </div>
           </section>
 
@@ -353,6 +329,7 @@ function mapBackendProject(data: BackendProjectResponse): Project {
     openIssues: 0,
     repoUrl,
     githubRepo,
+    manifestUrl: data.manifestUrl ?? undefined,
     submissionDate: data.submissionDate ?? undefined,
     isSubmissionAvailable: data.isSubmissionAvailable ?? false,
     activity: [],

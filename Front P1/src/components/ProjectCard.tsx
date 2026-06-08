@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { GitFork, Star, AlertCircle, Clock } from "lucide-react";
-import { Project, courseColor } from "@/data/projects";
+import { Project, courseColor, typeColor } from "@/data/projects";
 import { StatusBadge } from "./StatusBadge";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +12,7 @@ export function ProjectCard({ project }: { project: Project }) {
       className="group flex flex-col rounded-xl border border-border bg-surface p-5 transition-all hover:border-accent-blue/40 hover:shadow-[0_4px_16px_oklch(0.55_0.18_255/0.08)]"
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span
             className={cn(
               "rounded-md px-1.5 py-0.5 text-[10px] font-semibold tracking-wide",
@@ -20,6 +20,14 @@ export function ProjectCard({ project }: { project: Project }) {
             )}
           >
             {project.course}
+          </span>
+          <span
+            className={cn(
+              "rounded-md px-1.5 py-0.5 text-[10px] font-semibold tracking-wide",
+              typeColor[project.type],
+            )}
+          >
+            {project.type}
           </span>
         </div>
         <StatusBadge status={project.status} />

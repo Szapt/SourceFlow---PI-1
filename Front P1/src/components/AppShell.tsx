@@ -35,9 +35,7 @@ export function AppShell({ children, breadcrumb }: Props) {
             <div className="flex-1 text-sm text-muted-foreground">
               {breadcrumb}
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Bell className="h-4 w-4" />
-            </Button>
+            {/* notifications removed */}
             <Button asChild size="sm" className="h-8 gap-1.5">
               <Link to="/new">
                 <Plus className="h-3.5 w-3.5" />

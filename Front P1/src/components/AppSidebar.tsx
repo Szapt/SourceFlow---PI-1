@@ -47,13 +47,13 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
-        <Link to="/" className="flex items-center gap-2 px-2 py-2">
+        <Link to="/" className="flex items-center gap-2 px-2 py-2 min-w-0">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent-emerald text-white">
             <GitBranch className="h-4 w-4" />
           </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-sm font-semibold">SourceFlow</span>
-            <span className="text-[10px] text-muted-foreground">
+          <div className="flex min-w-0 flex-col leading-tight overflow-hidden group-data-[collapsible=icon]:hidden">
+            <span className="truncate text-sm font-semibold">SourceFlow</span>
+            <span className="truncate text-[10px] text-muted-foreground">
               Repositorio académico
             </span>
           </div>
@@ -81,26 +81,12 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton>
-              <Search className="h-4 w-4" />
-              <span>Buscar</span>
-              <kbd className="ml-auto hidden rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground sm:inline">
-                ⌘K
-              </kbd>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
             <SidebarMenuButton onClick={logout}>
               <LogOut className="h-4 w-4" />
               <span>Cerrar sesión</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton>
-              <Settings className="h-4 w-4" />
-              <span>Ajustes</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {/* settings removed per request */}
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
