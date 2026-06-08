@@ -22,5 +22,6 @@ public class TechnologyEntity {
     private String description;
 
     @ManyToMany(mappedBy = "technologies")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<ProjectEntity> projects = new ArrayList<>();
 }

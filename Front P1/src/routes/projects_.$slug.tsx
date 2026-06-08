@@ -102,7 +102,12 @@ export const Route = createFileRoute("/projects_/$slug")({
     const slug = params.slug;
 
     try {
-      const response = await fetch(`${BACKEND}/projects`);
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const response = await fetch(`${BACKEND}/projects`, { headers });
       if (!response.ok) throw new Error("Error al consultar proyectos en el backend");
 
       const dbProjects: DBProject[] = await response.json();

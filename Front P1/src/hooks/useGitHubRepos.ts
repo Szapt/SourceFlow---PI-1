@@ -112,7 +112,12 @@ export function useGitHubRepos(_options?: {
 
     async function load(): Promise<Project[]> {
       // ── 1. Obtener proyectos desde el backend ──────────────────────────────
-      const dbRes = await fetch(`${BACKEND}/projects`);
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const dbRes = await fetch(`${BACKEND}/projects`, { headers });
       if (!dbRes.ok) {
         throw new Error(`Error al obtener proyectos del servidor: ${dbRes.status}`);
       }

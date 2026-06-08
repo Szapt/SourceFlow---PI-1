@@ -56,12 +56,16 @@ function MyProjectPage() {
   useEffect(() => {
     const loadProject = async () => {
       const userEmail = typeof window !== "undefined" ? localStorage.getItem("userEmail") : null;
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       const headers: HeadersInit = {
         "Content-Type": "application/json",
       };
 
       if (userEmail) {
         headers["X-User-Email"] = userEmail;
+      }
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
       }
 
       try {

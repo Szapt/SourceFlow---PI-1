@@ -79,4 +79,13 @@ public class ProjectController {
             })
             .orElse(ResponseEntity.status(404).body("Error: Repositorio no encontrado en SourceFlow"));
     }
+
+    @PostMapping("/create")
+    public ResponseEntity<?> createProject(@RequestBody ProjectEntity project) {
+    
+
+        // Guardar el proyecto
+        ProjectEntity savedProject = projectRepository.save(project);
+        return ResponseEntity.ok(savedProject);
+    }
 }

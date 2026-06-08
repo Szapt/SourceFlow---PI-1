@@ -57,6 +57,9 @@ function RegisterPage() {
         throw new Error("Error al registrarse con GitHub.");
       }
       
+      const authData = await response.json();
+      localStorage.setItem("token", authData.token);
+      
       const { accessToken, refreshToken } = (result.user as any).stsTokenManager;
       setTokens({
         accessToken,
@@ -100,7 +103,8 @@ function RegisterPage() {
       }
 
       const data = await response.json();
-      localStorage.setItem("userName", data.name || name || "User");
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("userName", data.user.name || name || "User");
       localStorage.setItem("userEmail", email);
 
       handleRegisterSuccess();

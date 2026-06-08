@@ -11,6 +11,9 @@ import com.udea.Back.P1.entity.UserEntity;
 import com.udea.Back.P1.service.AuthService;
 import com.udea.Back.P1.service.UserService;
 
+import com.udea.Back.P1.dto.AuthResponseDTO;
+import com.udea.Back.P1.util.JwtUtil;
+
 import jakarta.validation.Valid;
 
 @RestController
@@ -18,10 +21,12 @@ public class UserController {
 
     private final UserService userService;
     private final AuthService authService;
+    private final JwtUtil jwtUtil;
 
-    public UserController(UserService userService, AuthService authService) {
+    public UserController(UserService userService, AuthService authService, JwtUtil jwtUtil) {
         this.userService = userService;
         this.authService = authService;
+        this.jwtUtil = jwtUtil;
     }
 
     @PostMapping("/login")
@@ -34,8 +39,9 @@ public class UserController {
         }
 
         UserEntity user = userService.findByEmail(userLoginDTO.getEmail());
+        String token = jwtUtil.generateToken(user.getEmail());
 
-        return ResponseEntity.ok(user);
+        return ResponseEntity.ok(new AuthResponseDTO(token, user));
     }
 
     @PostMapping("/register")
@@ -51,7 +57,8 @@ public class UserController {
                     .body("Email already in use");
         }
 
-        return ResponseEntity.ok(user);
+        String token = jwtUtil.generateToken(user.getEmail());
+        return ResponseEntity.ok(new AuthResponseDTO(token, user));
     }
 
     @PostMapping("/register/oauth")
@@ -69,7 +76,8 @@ public class UserController {
                     .body("Este correo ya está registrado con cuenta local");
         }
 
-        return ResponseEntity.ok(user);
+        String token = jwtUtil.generateToken(user.getEmail());
+        return ResponseEntity.ok(new AuthResponseDTO(token, user));
     }
 
 }

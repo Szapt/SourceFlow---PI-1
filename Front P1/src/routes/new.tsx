@@ -24,7 +24,7 @@ interface Semester {
 export const Route = createFileRoute("/new")({
   head: () => ({
     meta: [
-      { title: "Subir proyecto — FacSis" },
+      { title: "Subir proyecto — SourceFlow" },
       {
         name: "description",
         content:
@@ -111,7 +111,7 @@ function NewProjectPage() {
 
       // Validate repo exists on GitHub
       const ghResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
-      
+
       if (!ghResponse.ok) {
         if (ghResponse.status === 404) {
           setValidationError("Repositorio no encontrado en GitHub");
@@ -128,9 +128,11 @@ function NewProjectPage() {
       if (!currentUsername && currentUserEmail) {
         // Call your backend to get the username for this email
         try {
+          const token = localStorage.getItem("token");
           const userResponse = await fetch(`http://localhost:8080/api/user/username`, {
             headers: {
               "X-User-Email": currentUserEmail,
+              ...(token ? { "Authorization": `Bearer ${token}` } : {})
             },
           });
           if (userResponse.ok) {
@@ -175,12 +177,36 @@ function NewProjectPage() {
     if (!repoData) return;
 
     // TODO: Send to backend
-    console.log({
-      repo: repoUrl,
+    const payload = {
+      name: repoData.name,                    // nombre del repo
+      description: repoData.description,      // descripción
+      repoUrl: repoData.html_url,             // URL completa
       course,
       semester,
-      techs,
-    });
+      technologies: techs,
+      githubOwner: repoData.owner.login,      // username del dueño
+    };
+
+    const token = localStorage.getItem("token");
+    fetch("http://localhost:8080/projects/create", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        ...(token ? { "Authorization": `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(payload),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Error al guardar proyecto");
+        return res.json();
+      })
+      .then((saved) => {
+        console.log("Proyecto guardado:", saved);
+        // aquí puedes redirigir al usuario o mostrar un mensaje de éxito
+      })
+      .catch((err) => {
+        console.error(err);
+      });
   }
 
   // Phase 1: Repo URL input

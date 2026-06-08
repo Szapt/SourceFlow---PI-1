@@ -58,6 +58,10 @@ function LoginPage() {
       if (!response.ok) {
         throw new Error("Error al autenticarse con GitHub.");
       }
+      
+      const authData = await response.json();
+      localStorage.setItem("token", authData.token);
+      
       const { accessToken, refreshToken } = (result.user as any).stsTokenManager;
       setTokens({
         accessToken,
@@ -95,8 +99,9 @@ function LoginPage() {
       }
 
       const data = await response.json();
-      localStorage.setItem("userName", data.name || "User");
-      localStorage.setItem("userEmail", data.email || email);
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("userName", data.user.name || "User");
+      localStorage.setItem("userEmail", data.user.email || email);
 
       handleLogin();
     } catch (err: unknown) {
