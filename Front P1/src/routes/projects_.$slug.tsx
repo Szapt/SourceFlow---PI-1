@@ -91,7 +91,7 @@ function buildFallbackProject(db: DBProject): Project {
     openIssues: 0,
     updatedAt: "—",
     repoUrl: normalized?.replace("https://", "") ?? "",
-    githubRepo: normalized ?? "",  // URL completa necesaria para parseGithubRepo()
+    githubRepo: normalized ?? "", // URL completa necesaria para parseGithubRepo()
     testCoverage: 0,
     activity: [],
   };
@@ -203,7 +203,6 @@ function ProjectDetail() {
   const { project } = Route.useLoaderData() as { project: Project };
   const gh = parseGithubRepo(project.githubRepo);
   const router = useRouter();
-  // Estado local para forzar refresco visual (opcional, pero útil si hay caché)
   const [refreshTick, setRefreshTick] = useState(0);
 
   return (
@@ -242,7 +241,7 @@ function ProjectDetail() {
               <span
                 className={cn(
                   "rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                  courseColor[project.course],
+                  courseColor[project.course]
                 )}
               >
                 {project.course}
@@ -250,7 +249,7 @@ function ProjectDetail() {
               <span
                 className={cn(
                   "rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                  typeColor[project.type],
+                  typeColor[project.type]
                 )}
               >
                 {project.type}
