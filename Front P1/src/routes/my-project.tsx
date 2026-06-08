@@ -347,8 +347,6 @@ function mapBackendProject(data: BackendProjectResponse): Project {
     technologies: data.technologies ?? [],
     authors,
     updatedAt: "Actualizado recientemente",
-    documentationLevel: 0,
-    qualityScore: 0,
     testCoverage: 0,
     stars: 0,
     forks: 0,

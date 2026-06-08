@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { GitFork, Star, AlertCircle, Clock } from "lucide-react";
 import { Project, courseColor } from "@/data/projects";
 import { StatusBadge } from "./StatusBadge";
-import { QualityIndicator } from "./QualityIndicator";
 import { cn } from "@/lib/utils";
 
 export function ProjectCard({ project }: { project: Project }) {
@@ -21,9 +20,6 @@ export function ProjectCard({ project }: { project: Project }) {
             )}
           >
             {project.course}
-          </span>
-          <span className="text-[11px] font-mono text-muted-foreground">
-            {project.semester}
           </span>
         </div>
         <StatusBadge status={project.status} />
@@ -50,11 +46,6 @@ export function ProjectCard({ project }: { project: Project }) {
             +{project.technologies.length - 4}
           </span>
         )}
-      </div>
-
-      <div className="mt-4 space-y-2">
-        <QualityIndicator label="Documentación" value={project.documentationLevel} />
-        <QualityIndicator label="Calidad" value={project.qualityScore} />
       </div>
 
       <div className="mt-4 flex items-center justify-between border-t border-border pt-3">

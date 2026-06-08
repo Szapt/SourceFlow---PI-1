@@ -81,10 +81,6 @@ function Dashboard() {
   const activeCount = projects.filter((p) => p.status === "in_progress").length;
   const completedCount = projects.filter((p) => p.status === "complete").length;
   const totalStars = projects.reduce((sum, p) => sum + p.stars, 0);
-  const avgQuality =
-    projects.length > 0
-      ? Math.round(projects.reduce((sum, p) => sum + p.qualityScore, 0) / projects.length)
-      : 0;
 
   // Primeros 4 proyectos como "destacados"
   const featured = projects.slice(0, 4);
@@ -150,13 +146,6 @@ function Dashboard() {
             value={String(totalStars)}
             delta={`${totalStars > 0 ? "+" : ""}${totalStars}`}
             icon={GitCommit}
-            loading={isLoading}
-          />
-          <Stat
-            label="Calidad promedio"
-            value={`${avgQuality}%`}
-            delta={`${avgQuality > 0 ? "+" : ""}${avgQuality}%`}
-            icon={Activity}
             loading={isLoading}
           />
         </div>

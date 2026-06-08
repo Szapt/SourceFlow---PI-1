@@ -12,17 +12,26 @@ export interface UseGitHubReposResult {
 }
 
 // ── Shape de la tabla `projects` en Neon ──────────────────────────────────────
+type DbReference = number | string | { id?: number; name?: string } | null;
+
 interface DBProject {
   id: number;
   name: string;
   description: string | null;
   repoUrl: string;           // ej: "https://github.com/MariAgudelo2/Poi-Bank"
-  course: number | null;
-  semester: number | null;
-  projectType: number | null;
-  state: number | null;
+  course: DbReference;
+  semester: DbReference;
+  projectType: DbReference;
+  state: DbReference;
   manifestUrl: string | null;
-  tutor: number | null;
+  tutor: DbReference;
+}
+
+function dbReferenceName(ref: DbReference): string {
+  if (ref == null) return "";
+  if (typeof ref === "string") return ref;
+  if (typeof ref === "number") return String(ref);
+  return ref.name ?? (ref.id != null ? String(ref.id) : "");
 }
 
 // ── GitHub API shape ──────────────────────────────────────────────────────────
@@ -182,7 +191,7 @@ function buildFallbackProject(db: DBProject): Project {
     name: db.name,
     short: db.description ?? "Sin descripción.",
     course: "Independiente",
-    semester: db.semester ? String(db.semester) : "",
+    semester: dbReferenceName(db.semester),
     type: "Desarrollo",
     status: "in_progress",
     technologies: [],
@@ -190,7 +199,6 @@ function buildFallbackProject(db: DBProject): Project {
     stars: 0,
     forks: 0,
     openIssues: 0,
-    qualityScore: 40,
     updatedAt: "—",
     repoUrl: db.repoUrl ? db.repoUrl.replace("https://", "") : "",
     testCoverage: 0,

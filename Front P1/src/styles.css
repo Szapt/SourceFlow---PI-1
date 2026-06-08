@@ -95,11 +95,6 @@
   --status-abandoned: oklch(0.55 0.04 50);
   --status-archived: oklch(0.55 0.04 50);
 
-  /* Quality bar gradient stops */
-  --quality-low: oklch(0.65 0.2 25);
-  --quality-mid: oklch(0.78 0.15 75);
-  --quality-high: oklch(0.42 0.12 152);
-
   --gradient-hero: linear-gradient(135deg, oklch(0.96 0.03 152) 0%, oklch(0.97 0.02 160) 100%);
   --gradient-accent: linear-gradient(135deg, var(--accent-green), var(--accent-green-mid));
   --shadow-soft: 0 1px 2px oklch(0.2 0.02 250 / 0.04), 0 1px 3px oklch(0.2 0.02 250 / 0.06);
@@ -207,11 +202,6 @@
   code, pre, kbd {
     font-family: var(--font-mono);
   }
-}
-
-/* Quality bar */
-.quality-bar {
-  background: linear-gradient(90deg, var(--quality-low) 0%, var(--quality-mid) 50%, var(--quality-high) 100%);
 }
 
 /* Subtle grid pattern for hero */

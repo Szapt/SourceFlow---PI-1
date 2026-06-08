@@ -1,6 +1,8 @@
 import { Project, ProjectStatus, ProjectType, Course } from "@/data/projects";
 import { GitHubRepo } from "./useGitHubRepos";
 
+type DbReference = number | string | { id?: number; name?: string } | null | undefined;
+
 function relativeDate(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
@@ -12,6 +14,20 @@ function relativeDate(iso: string): string {
   const months = Math.floor(days / 30);
   if (months < 12) return `hace ${months} mes${months > 1 ? "es" : ""}`;
   return `hace ${Math.floor(months / 12)} año${Math.floor(months / 12) > 1 ? "s" : ""}`;
+}
+
+function dbReferenceName(ref: DbReference): string | undefined {
+  if (ref == null) return undefined;
+  if (typeof ref === "string") return ref;
+  if (typeof ref === "number") return String(ref);
+  return ref.name ?? (ref.id != null ? String(ref.id) : undefined);
+}
+
+function dbReferenceId(ref: DbReference): number | undefined {
+  if (typeof ref === "number") return ref;
+  if (typeof ref === "string" && /^\d+$/.test(ref)) return Number(ref);
+  if (ref && typeof ref === "object" && ref.id != null) return ref.id;
+  return undefined;
 }
 
 function deriveTechnologies(repo: GitHubRepo): string[] {
@@ -42,31 +58,9 @@ function deriveStatus(repo: GitHubRepo): ProjectStatus {
   return "in_progress";
 }
 
-function computeQualityScore(repo: GitHubRepo): number {
-  let score = 40;
-  if (repo.description && repo.description.length > 20) score += 10;
-  if (repo.topics.length > 0) score += 10;
-  if (repo.stargazers_count > 0) score += Math.min(repo.stargazers_count * 2, 15);
-  if (repo.forks_count > 0) score += Math.min(repo.forks_count * 2, 10);
-  if (repo.open_issues_count === 0) score += 5;
-  if (!repo.fork) score += 10;
-  return Math.min(score, 100);
-}
-
 function deriveAuthors(repo: GitHubRepo): Project["authors"] {
   const name = repo.owner.login;
   return [{ name, initials: name.slice(0, 2).toUpperCase() }];
-}
-
-function computeDocumentationLevel(repo: GitHubRepo): number {
-  let score = 20;
-  if (repo.description && repo.description.length > 20) score += 20;
-  if (repo.topics.length > 0) score += 15;
-  if (repo.homepage) score += 10;
-  if (!repo.fork) score += 10;
-  if (repo.watchers_count > 0) score += Math.min(repo.watchers_count, 10);
-  if (repo.forks_count > 0) score += Math.min(repo.forks_count, 15);
-  return Math.min(score, 100);
 }
 
 // Mapeo de IDs numericos de la DB a los tipos del modelo interno
@@ -84,17 +78,29 @@ export function mapGitHubRepoToProject(repo: GitHubRepo): Project {
     slug,
     name: db?.name ?? repo.name,
     short: db?.description ?? repo.description ?? "Sin descripción.",
-    course: (db?.course && courseMap[db.course]) ? courseMap[db.course] : deriveCourse(repo),
-    semester: db?.semester ? String(db.semester) : "",
-    type: (db?.projectType && typeMap[db.projectType]) ? typeMap[db.projectType] : deriveType(repo),
-    status: deriveStatus(repo),
+    course: (() => {
+      const name = dbReferenceName(db?.course);
+      if (name === "PI1" || name === "PI2" || name === "Independiente") return name as Course;
+      const id = dbReferenceId(db?.course);
+      return id != null && courseMap[id] ? courseMap[id] : deriveCourse(repo);
+    })(),
+    semester: dbReferenceName(db?.semester) ?? "",
+    type: (() => {
+      const name = dbReferenceName(db?.projectType);
+      if (name === "Investigativo" || name === "Desarrollo" || name === "Emprendimiento") return name as ProjectType;
+      const id = dbReferenceId(db?.projectType);
+      return id != null && typeMap[id] ? typeMap[id] : deriveType(repo);
+    })(),
+    status: (() => {
+      const name = dbReferenceName(db?.state);
+      if (name === "complete" || name === "in_progress" || name === "abandoned") return name as ProjectStatus;
+      return deriveStatus(repo);
+    })(),
     technologies: deriveTechnologies(repo),
     authors: deriveAuthors(repo),
     stars: repo.stargazers_count,
     forks: repo.forks_count,
     openIssues: repo.open_issues_count,
-    qualityScore: computeQualityScore(repo),
-    documentationLevel: computeDocumentationLevel(repo),
     updatedAt: relativeDate(repo.updated_at),
     // repoUrl: versión sin protocolo para mostrar en UI
     repoUrl: repo.html_url.replace("https://", ""),

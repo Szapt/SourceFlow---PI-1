@@ -284,7 +284,6 @@ function ProjectsPage() {
                     <th className="px-4 py-3 text-left font-medium">Tipo</th>
                     <th className="px-4 py-3 text-left font-medium">Estado</th>
                     <th className="px-4 py-3 text-left font-medium">Stack</th>
-                    <th className="px-4 py-3 text-left font-medium">Calidad</th>
                     <th className="px-4 py-3 text-left font-medium">Autores</th>
                     <th className="px-4 py-3 text-left font-medium">Actividad</th>
                   </tr>
@@ -322,14 +321,6 @@ function ProjectsPage() {
                               {t}
                             </span>
                           ))}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
-                            <div className="h-full quality-bar" style={{ width: `${p.qualityScore}%` }} />
-                          </div>
-                          <span className="font-mono text-xs tabular-nums">{p.qualityScore}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">

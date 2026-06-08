@@ -7,7 +7,6 @@ import { AppShell } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import {
   getProject,
   parseGithubRepo,
@@ -23,11 +22,6 @@ import {
   languageColor,
   GhCommit,
 } from "@/lib/github";
-import {
-  projectDocuments,
-  ProjectDocument,
-  DocumentType,
-} from "@/lib/neon";
 import { mapGitHubRepoToProject } from "@/hooks/mapGitHubRepoToProject";
 import { GitHubRepo } from "@/hooks/useGitHubRepos";
 import {
@@ -38,29 +32,33 @@ import {
   GitFork,
   AlertCircle,
   GitBranch,
-  Upload,
-  FileText,
-  Eye,
-  Trash2,
   BookOpen,
   Activity,
-  ClipboardCheck,
   Scale,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "@tanstack/react-router";
+
+type DbReference = number | string | { id?: number; name?: string } | null;
 
 interface DBProject {
   id: number;
   name: string;
   description: string | null;
   repoUrl: string;
-  course: number | null;
-  semester: number | null;
-  projectType: number | null;
-  state: number | null;
+  course: DbReference;
+  semester: DbReference;
+  projectType: DbReference;
+  state: DbReference;
   manifestUrl: string | null;
-  tutor: number | null;
+  tutor: DbReference;
+}
+
+function dbReferenceName(ref: DbReference): string {
+  if (ref == null) return "";
+  if (typeof ref === "string") return ref;
+  if (typeof ref === "number") return String(ref);
+  return ref.name ?? (ref.id != null ? String(ref.id) : "");
 }
 
 const BACKEND = "http://localhost:8080";
@@ -83,7 +81,7 @@ function buildFallbackProject(db: DBProject): Project {
     name: db.name,
     short: db.description ?? "Sin descripción.",
     course: "Independiente",
-    semester: db.semester ? String(db.semester) : "",
+    semester: dbReferenceName(db.semester),
     type: "Desarrollo",
     status: "in_progress",
     technologies: [],
@@ -91,8 +89,6 @@ function buildFallbackProject(db: DBProject): Project {
     stars: 0,
     forks: 0,
     openIssues: 0,
-    qualityScore: 40,
-    documentationLevel: 0,
     updatedAt: "—",
     repoUrl: normalized?.replace("https://", "") ?? "",
     githubRepo: normalized ?? "",  // URL completa necesaria para parseGithubRepo()
@@ -312,7 +308,6 @@ function ProjectDetail() {
         <div className="space-y-10 lg:col-span-7">
           <ReadmeSection gh={gh} />
           <ActivitySection gh={gh} />
-          <DocsSection projectId={project.id} />
         </div>
 
         <aside className="lg:col-span-3">
@@ -450,143 +445,6 @@ function ActivitySection({
   );
 }
 
-/* ── EAP & Manifiesto ──────────────────────────────────────────────── */
-
-function DocsSection({ projectId }: { projectId: string }) {
-  return (
-    <section>
-      <SectionTitle icon={ClipboardCheck}>EAP y Manifiesto de Entrega</SectionTitle>
-      <div className="space-y-4">
-        <DocSlot
-          projectId={projectId}
-          type="eap"
-          title="EAP — Estructura de Análisis del Proyecto"
-          description="Documento que detalla el análisis estructural del proyecto."
-        />
-        <DocSlot
-          projectId={projectId}
-          type="manifiesto"
-          title="Manifiesto de Entrega"
-          description="Documento formal de entrega final del proyecto."
-        />
-      </div>
-    </section>
-  );
-}
-
-function DocSlot({
-  projectId,
-  type,
-  title,
-  description,
-}: {
-  projectId: string;
-  type: DocumentType;
-  title: string;
-  description: string;
-}) {
-  const [tick, setTick] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const doc: ProjectDocument | undefined = (() => {
-    void tick;
-    return projectDocuments.get(projectId, type);
-  })();
-
-  const onFile = async (file: File) => {
-    if (!/\.(pdf|docx?)$/i.test(file.name)) {
-      alert("Solo se permiten archivos PDF o DOCX.");
-      return;
-    }
-    const dataUrl = await fileToDataUrl(file);
-    projectDocuments.upsert({
-      project_id: projectId,
-      type,
-      file_name: file.name,
-      file_url: dataUrl,
-    });
-    setTick((t) => t + 1);
-  };
-
-  return (
-    <div className="rounded-xl border border-border bg-surface p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold">{title}</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-        </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".pdf,.doc,.docx"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onFile(f);
-            e.target.value = "";
-          }}
-        />
-      </div>
-
-      {doc ? (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface-muted px-4 py-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-accent-green-soft text-accent-green-deep">
-              <FileText className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{doc.file_name}</p>
-              <p className="text-[11px] text-muted-foreground">
-                Subido {relativeTime(doc.uploaded_at)}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <a
-              href={doc.file_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-xs font-medium hover:bg-muted"
-            >
-              <Eye className="h-3.5 w-3.5" /> Ver documento
-            </a>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-2 text-muted-foreground hover:text-destructive"
-              onClick={() => {
-                projectDocuments.remove(projectId, type);
-                setTick((t) => t + 1);
-              }}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8"
-              onClick={() => inputRef.current?.click()}
-            >
-              <Upload className="h-3.5 w-3.5" /> Reemplazar
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="mt-4 flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-surface-muted px-4 py-8 text-center transition-colors hover:border-accent-green hover:bg-accent-green-soft/30"
-        >
-          <Upload className="h-6 w-6 text-muted-foreground" />
-          <p className="text-sm font-medium">Subir archivo PDF o DOCX</p>
-          <p className="text-xs text-muted-foreground">
-            Aún no se ha subido el documento. Haz clic para seleccionar.
-          </p>
-        </button>
-      )}
-    </div>
-  );
-}
-
 /* ── Atributos del proyecto (sidebar derecho) ──────────────────────── */
 
 function AttributesCard({
@@ -631,15 +489,6 @@ function AttributesCard({
             </li>
           ))}
         </ul>
-      </div>
-
-      {/* Calidad */}
-      <div className="rounded-xl border border-border bg-surface p-5">
-        <h3 className="mb-4 text-sm font-semibold">Calidad</h3>
-        <div className="space-y-4">
-          <BarMetric label="Documentación" value={project.documentationLevel} />
-          <BarMetric label="Calidad" value={project.qualityScore} />
-        </div>
       </div>
 
       {/* Repositorio */}
@@ -761,7 +610,7 @@ function AttributesCard({
           <span className="font-medium text-foreground">
             {statusLabel[project.status].toLowerCase()}
           </span>{" "}
-          del semestre {project.semester}.
+          del semestre {String(project.semester)}.
         </p>
       </div>
     </div>
@@ -788,18 +637,6 @@ function SectionTitle({
 function EmptyState({ children }: { children: React.ReactNode }) {
   return (
     <p className="py-6 text-center text-sm text-muted-foreground">{children}</p>
-  );
-}
-
-function BarMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <div>
-      <div className="mb-1.5 flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-mono font-medium">{value}%</span>
-      </div>
-      <Progress value={value} className="h-1.5" />
-    </div>
   );
 }
 

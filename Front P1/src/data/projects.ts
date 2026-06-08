@@ -21,8 +21,6 @@ export interface Project {
   authors: { name: string; initials: string }[];
   updatedAt: string;
   semester: string;
-  documentationLevel: number; // 0-100
-  qualityScore: number; // 0-100
   testCoverage: number; // 0-100
   stars: number;
   forks: number;
@@ -58,8 +56,6 @@ export const projects: Project[] = [
     ],
     updatedAt: "hace 2 días",
     semester: "2025-1",
-    documentationLevel: 78,
-    qualityScore: 82,
     testCoverage: 64,
     stars: 24,
     forks: 7,
@@ -89,8 +85,6 @@ export const projects: Project[] = [
     ],
     updatedAt: "hace 3 semanas",
     semester: "2024-2",
-    documentationLevel: 94,
-    qualityScore: 91,
     testCoverage: 88,
     stars: 47,
     forks: 12,
@@ -118,8 +112,6 @@ export const projects: Project[] = [
     ],
     updatedAt: "hoy",
     semester: "2025-1",
-    documentationLevel: 52,
-    qualityScore: 61,
     testCoverage: 28,
     stars: 11,
     forks: 3,
@@ -147,8 +139,6 @@ export const projects: Project[] = [
     ],
     updatedAt: "hace 1 mes",
     semester: "2024-2",
-    documentationLevel: 86,
-    qualityScore: 84,
     testCoverage: 71,
     stars: 33,
     forks: 9,
@@ -173,8 +163,6 @@ export const projects: Project[] = [
     authors: [{ name: "Mateo Caicedo", initials: "MC" }],
     updatedAt: "hace 5 días",
     semester: "2025-1",
-    documentationLevel: 67,
-    qualityScore: 73,
     testCoverage: 55,
     stars: 18,
     forks: 4,
@@ -202,8 +190,6 @@ export const projects: Project[] = [
     ],
     updatedAt: "hace 8 meses",
     semester: "2024-1",
-    documentationLevel: 24,
-    qualityScore: 38,
     testCoverage: 0,
     stars: 4,
     forks: 1,
@@ -230,8 +216,6 @@ export const projects: Project[] = [
     ],
     updatedAt: "hace 1 semana",
     semester: "2025-1",
-    documentationLevel: 71,
-    qualityScore: 76,
     testCoverage: 60,
     stars: 29,
     forks: 6,
@@ -259,8 +243,6 @@ export const projects: Project[] = [
     ],
     updatedAt: "hace 2 meses",
     semester: "2024-2",
-    documentationLevel: 89,
-    qualityScore: 87,
     testCoverage: 79,
     stars: 41,
     forks: 8,
