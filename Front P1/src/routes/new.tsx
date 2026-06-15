@@ -194,16 +194,19 @@ function NewProjectPage() {
     setIsSubmitting(true);
     setSubmitError(null);
 
+    const userEmail = localStorage.getItem("userEmail");
+
     const payload = {
       name: repoData.name,
       description: repoData.description ?? "Sin descripción",
       repoUrl: repoData.html_url,
       courseId,
       semesterId,
-      typeId: 2,   // default: Desarrollo
-      stateId: 2,  // default: En progreso
-      tutorId: 1,  // default tutor while auth is not wired
+      typeId: 2,
+      stateId: 2,
+      tutorId: 1,
       technologyIds: techIds,
+      userEmail,   // ← AGREGAR ESTO
     };
 
     try {

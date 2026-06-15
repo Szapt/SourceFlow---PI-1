@@ -22,10 +22,11 @@ public interface ProjectRepository extends JpaRepository<ProjectEntity, Long> {
         JOIN p.state st
         JOIN p.semester sem
         WHERE s.email = :email
-          AND st.name = 'en progreso'
-          AND sem.startDate <= :today
-          AND sem.fechaFin >= :today
+            AND LOWER(st.name) = 'en progreso'
+            AND sem.startDate <= :today
+            AND sem.fechaFin >= :today
     """)
+    
     Optional<ProjectEntity> findActiveProjectForStudent(
         @Param("email") String email,
         @Param("today") LocalDate today

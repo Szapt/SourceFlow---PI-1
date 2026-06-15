@@ -12,6 +12,7 @@ import com.udea.Back.P1.dto.ProjectResponseDTO;
 import com.udea.Back.P1.entity.ProjectEntity;
 import com.udea.Back.P1.entity.ProjectTeamsEntity;
 import com.udea.Back.P1.entity.TechnologyEntity;
+import com.udea.Back.P1.entity.UserEntity;
 import com.udea.Back.P1.repository.*;
 
 @Service
@@ -24,11 +25,12 @@ public class ProjectService {
     private final ProjectTypeRepository projectTypeRepository;
     private final ProjectStateRepository projectStateRepository;
     private final UserRepository userRepository;
+    private final ProjectTeamsRepository projectTeamsRepository;
 
     public ProjectService(ProjectRepository projectRepository, CourseRepository courseRepository,
             SemesterRepository semesterRepository, ProjectTypeRepository projectTypeRepository,
             ProjectStateRepository projectStateRepository, TechnologyRepository technologyRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository, ProjectTeamsRepository projectTeamsRepository) {  // ← agregar aquí
         this.projectRepository = projectRepository;
         this.courseRepository = courseRepository;
         this.semesterRepository = semesterRepository;
@@ -36,6 +38,7 @@ public class ProjectService {
         this.projectTypeRepository = projectTypeRepository;
         this.projectStateRepository = projectStateRepository;
         this.userRepository = userRepository;
+        this.projectTeamsRepository = projectTeamsRepository;  // ← y aquí
     }
 
     @Transactional(readOnly = true)
@@ -62,7 +65,20 @@ public class ProjectService {
         if (dto.getTechnologyIds() != null) {
             p.setTechnologies(technologyRepository.findAllById(dto.getTechnologyIds()));
         }
-        return projectRepository.save(p);
+
+        ProjectEntity saved = projectRepository.save(p);
+
+        if (dto.getUserEmail() != null && !dto.getUserEmail().isBlank()) {
+            UserEntity student = userRepository.findByEmail(dto.getUserEmail());
+            if (student != null) {
+                ProjectTeamsEntity team = new ProjectTeamsEntity();
+                team.setProject(saved);
+                team.setStudent(student);
+                projectTeamsRepository.save(team);
+            }
+        }
+
+        return saved;
     }
 
     private ProjectResponseDTO mapToDto(ProjectEntity project) {

@@ -18,4 +18,5 @@ public class ProjectRequestDTO {
     private Long stateId;
     private Long tutorId;
     private List<Long> technologyIds; // Recibe los IDs de las tecnologías seleccionadas
+    private String userEmail;
 }
