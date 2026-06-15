@@ -1,4 +1,28 @@
 {
     "java.compile.nullAnalysis.mode": "automatic",
-    "java.configuration.updateBuildConfiguration": "interactive"
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/*/**": true,
+        "**/Back-P1/.gradle/**": true,
+        "**/Back-P1/build/**": true,
+        "**/Back-P1/bin/**": true,
+        "**/Front P1/.vinxi/**": true,
+        "**/Front P1/.output/**": true,
+        "**/Front P1/.tanstack/**": true,
+        "**/Front P1/.wrangler/**": true,
+        "**/Front P1/dist/**": true
+    },
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/Back-P1/.gradle": true,
+        "**/Back-P1/build": true,
+        "**/Back-P1/bin": true,
+        "**/Front P1/.vinxi": true,
+        "**/Front P1/.output": true,
+        "**/Front P1/.tanstack": true,
+        "**/Front P1/.wrangler": true,
+        "**/Front P1/dist": true
+    }
 }

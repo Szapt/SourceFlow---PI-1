@@ -21,6 +21,4 @@ public class TechnologyEntity {
     @Column(nullable = true)
     private String description;
 
-    @ManyToMany(mappedBy = "technologies")
-    private List<ProjectEntity> projects = new ArrayList<>();
 }

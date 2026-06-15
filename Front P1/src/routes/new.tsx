@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -21,14 +21,18 @@ interface Semester {
   fechaFin: string;
 }
 
+interface Technology {
+  id: number;
+  name: string;
+}
+
 export const Route = createFileRoute("/new")({
   head: () => ({
     meta: [
-      { title: "Subir proyecto — FacSis" },
+      { title: "Subir proyecto — SourceFlow" },
       {
         name: "description",
-        content:
-          "Publica un nuevo proyecto académico en el repositorio.",
+        content: "Publica un nuevo proyecto académico en el repositorio.",
       },
     ],
   }),
@@ -36,13 +40,15 @@ export const Route = createFileRoute("/new")({
 });
 
 function NewProjectPage() {
+  const navigate = useNavigate();
+
+  // ── Phase-1 state ──────────────────────────────────────────────────────────
   const [repoUrl, setRepoUrl] = useState("");
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [repoData, setRepoData] = useState<any>(null);
-  const [userUsername, setUserUsername] = useState<string | null>(null);
 
-  // Cargar cursos y semestres dinámicamente
+  // ── Lookup queries ─────────────────────────────────────────────────────────
   const coursesQ = useQuery({
     queryKey: ["courses"],
     queryFn: async () => {
@@ -61,25 +67,38 @@ function NewProjectPage() {
     },
   });
 
-  // Form fields after validation
-  const [course, setCourse] = useState<string | null>(null);
-  const [semester, setSemester] = useState<string | null>(null);
-  const [techs, setTechs] = useState<string[]>([]);
-  const [techInput, setTechInput] = useState("");
+  const techsQ = useQuery({
+    queryKey: ["technologies"],
+    queryFn: async () => {
+      const res = await fetch(`${BACKEND}/projects/lookup/technologies`);
+      if (!res.ok) throw new Error("Error al cargar tecnologías");
+      return res.json() as Promise<Technology[]>;
+    },
+  });
 
-  // Set default values cuando carguen cursos y semestres
+  // ── Phase-2 form state (IDs, not names) ───────────────────────────────────
+  const [courseId, setCourseId] = useState<number | null>(null);
+  const [semesterId, setSemesterId] = useState<number | null>(null);
+  const [techIds, setTechIds] = useState<number[]>([]);
+
+  // Set default values when lookups load
   React.useEffect(() => {
-    if (coursesQ.data && coursesQ.data.length > 0 && !course) {
-      setCourse(coursesQ.data[0].name);
+    if (coursesQ.data && coursesQ.data.length > 0 && courseId === null) {
+      setCourseId(coursesQ.data[0].id);
     }
-  }, [coursesQ.data, course]);
+  }, [coursesQ.data, courseId]);
 
   React.useEffect(() => {
-    if (semestersQ.data && semestersQ.data.length > 0 && !semester) {
-      setSemester(semestersQ.data[0].name);
+    if (semestersQ.data && semestersQ.data.length > 0 && semesterId === null) {
+      setSemesterId(semestersQ.data[0].id);
     }
-  }, [semestersQ.data, semester]);
+  }, [semestersQ.data, semesterId]);
 
+  // ── Submit state ───────────────────────────────────────────────────────────
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // ── Phase-1: validate GitHub repo ─────────────────────────────────────────
   async function validateAndLoadRepo() {
     if (!repoUrl.trim()) {
       setValidationError("Por favor ingresa una URL de repositorio");
@@ -90,7 +109,6 @@ function NewProjectPage() {
     setValidationError(null);
 
     try {
-      // Parse GitHub URL
       const urlPattern = /github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/i;
       const match = repoUrl.trim().match(urlPattern);
 
@@ -103,58 +121,56 @@ function NewProjectPage() {
       const owner = match[1];
       const repo = match[2];
 
-      // Get current user's username from localStorage or auth
-      const currentUserEmail = typeof window !== "undefined" ? localStorage.getItem("userEmail") : null;
-      // You might need to fetch the username from your backend based on email
-      // For now, we'll try to get it from user data or assume it matches
-      let currentUsername = typeof window !== "undefined" ? (localStorage.getItem("github_username") || localStorage.getItem("userUsername")) : null;
+      // Optionally verify ownership against logged-in GitHub user
+      const currentUserEmail =
+        typeof window !== "undefined" ? localStorage.getItem("userEmail") : null;
+      let currentUsername =
+        typeof window !== "undefined"
+          ? localStorage.getItem("github_username") || localStorage.getItem("userUsername")
+          : null;
 
-      // Validate repo exists on GitHub
       const ghResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
-      
+
       if (!ghResponse.ok) {
-        if (ghResponse.status === 404) {
-          setValidationError("Repositorio no encontrado en GitHub");
-        } else {
-          setValidationError("Error al validar repositorio en GitHub");
-        }
+        setValidationError(
+          ghResponse.status === 404
+            ? "Repositorio no encontrado en GitHub"
+            : "Error al validar repositorio en GitHub"
+        );
         setIsValidating(false);
         return;
       }
 
       const ghRepoData = await ghResponse.json();
 
-      // If we don't have the username yet, we need to get it from backend
+      // Try to resolve username from backend if not cached
       if (!currentUsername && currentUserEmail) {
-        // Call your backend to get the username for this email
         try {
-          const userResponse = await fetch(`http://localhost:8080/api/user/username`, {
-            headers: {
-              "X-User-Email": currentUserEmail,
-            },
+          const userResponse = await fetch(`${BACKEND}/api/user/username`, {
+            headers: { "X-User-Email": currentUserEmail },
           });
           if (userResponse.ok) {
             const userData = await userResponse.json();
             currentUsername = userData.username;
-            localStorage.setItem("userUsername", currentUsername);
+            if (currentUsername) localStorage.setItem("userUsername", currentUsername);
           }
         } catch (e) {
           console.error("Could not fetch user username:", e);
         }
       }
 
-      // Verify owner matches current user
       if (currentUsername && owner.toLowerCase() !== currentUsername.toLowerCase()) {
-        setValidationError(`El repositorio debe ser tuyo. Propietario: ${owner}, usuario actual: ${currentUsername}`);
+        setValidationError(
+          `El repositorio debe ser tuyo. Propietario: ${owner}, usuario actual: ${currentUsername}`
+        );
         setIsValidating(false);
         return;
       }
 
-      // Success
+      // Success — advance to phase 2
       setRepoData(ghRepoData);
-      setUserUsername(owner);
-      setTechs([]); // Reset techs for new repo
-      setTechInput("");
+      setTechIds([]);
+      setSubmitError(null);
       setValidationError(null);
     } catch (error: any) {
       setValidationError(error.message || "Error al validar repositorio");
@@ -163,27 +179,57 @@ function NewProjectPage() {
     }
   }
 
-  function addTech() {
-    if (techInput.trim() && !techs.includes(techInput.trim())) {
-      setTechs([...techs, techInput.trim()]);
-      setTechInput("");
+  // ── Tech toggle ───────────────────────────────────────────────────────────
+  function toggleTech(id: number) {
+    setTechIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!repoData || courseId === null || semesterId === null) return;
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    const payload = {
+      name: repoData.name,
+      description: repoData.description ?? "Sin descripción",
+      repoUrl: repoData.html_url,
+      courseId,
+      semesterId,
+      typeId: 2,   // default: Desarrollo
+      stateId: 2,  // default: En progreso
+      tutorId: 1,  // default tutor while auth is not wired
+      technologyIds: techIds,
+    };
+
+    try {
+      const res = await fetch(`${BACKEND}/projects/upload`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Error ${res.status}`);
+      }
+
+      // Navigate home on success
+      navigate({ to: "/" });
+    } catch (err: any) {
+      setSubmitError(err.message || "Error al publicar el proyecto");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!repoData) return;
-
-    // TODO: Send to backend
-    console.log({
-      repo: repoUrl,
-      course,
-      semester,
-      techs,
-    });
-  }
-
-  // Phase 1: Repo URL input
+  // ─────────────────────────────────────────────────────────────────────────
+  // Phase 1: repo URL input
+  // ─────────────────────────────────────────────────────────────────────────
   if (!repoData) {
     return (
       <AppShell
@@ -231,7 +277,7 @@ function NewProjectPage() {
                   "w-full h-10 rounded-md px-4 text-sm font-medium transition-all flex items-center justify-center gap-2",
                   isValidating || !repoUrl.trim()
                     ? "bg-muted text-muted-foreground cursor-not-allowed"
-                    : "bg-accent-blue text-white hover:opacity-90",
+                    : "bg-accent-blue text-white hover:opacity-90"
                 )}
               >
                 {isValidating ? (
@@ -250,7 +296,9 @@ function NewProjectPage() {
     );
   }
 
-  // Phase 2: Additional fields after repo validation
+  // ─────────────────────────────────────────────────────────────────────────
+  // Phase 2: fill details and submit
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <AppShell
       breadcrumb={<span className="font-medium text-foreground">Nuevo proyecto</span>}
@@ -262,15 +310,17 @@ function NewProjectPage() {
               Completar información
             </h1>
             <p className="text-sm text-muted-foreground">
-              Repositorio validado: <span className="font-mono text-foreground">{repoData.full_name}</span>
+              Repositorio validado:{" "}
+              <span className="font-mono text-foreground">{repoData.full_name}</span>
             </p>
           </div>
           <button
             onClick={() => {
               setRepoData(null);
               setRepoUrl("");
-              setCourse(coursesQ.data?.[0]?.name ?? null);
-              setSemester(semestersQ.data?.[0]?.name ?? null);
+              setCourseId(coursesQ.data?.[0]?.id ?? null);
+              setSemesterId(semestersQ.data?.[0]?.id ?? null);
+              setTechIds([]);
             }}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -281,16 +331,19 @@ function NewProjectPage() {
         <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
           {/* Form */}
           <form className="space-y-6 lg:col-span-2" onSubmit={handleSubmit}>
+            {/* Repo verified banner */}
             <div className="rounded-lg border border-accent-emerald/30 bg-accent-emerald/5 p-4 flex items-start gap-3">
               <CheckCircle2 className="h-5 w-5 shrink-0 text-accent-emerald mt-0.5" />
               <div className="text-sm">
                 <p className="font-medium text-foreground">Repositorio verificado</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {repoData.description || "Sin descripción"} • {repoData.stargazers_count} estrellas
+                  {repoData.description || "Sin descripción"} •{" "}
+                  {repoData.stargazers_count} estrellas
                 </p>
               </div>
             </div>
 
+            {/* Course + Semester */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="Curso" required>
                 <div className="flex gap-1.5">
@@ -303,12 +356,12 @@ function NewProjectPage() {
                       <button
                         key={c.id}
                         type="button"
-                        onClick={() => setCourse(c.name)}
+                        onClick={() => setCourseId(c.id)}
                         className={cn(
                           "flex-1 rounded-md border px-2 py-2 text-sm font-medium transition-colors",
-                          course === c.name
+                          courseId === c.id
                             ? "border-accent-blue bg-accent-blue/10 text-accent-blue"
-                            : "border-border hover:bg-muted",
+                            : "border-border hover:bg-muted"
                         )}
                       >
                         {c.name}
@@ -320,8 +373,8 @@ function NewProjectPage() {
 
               <Field label="Semestre" required>
                 <select
-                  value={semester ?? ""}
-                  onChange={(e) => setSemester(e.target.value)}
+                  value={semesterId ?? ""}
+                  onChange={(e) => setSemesterId(Number(e.target.value))}
                   className="input"
                 >
                   {semestersQ.isLoading ? (
@@ -330,7 +383,7 @@ function NewProjectPage() {
                     <option>Error al cargar semestres</option>
                   ) : (
                     semestersQ.data?.map((s: Semester) => (
-                      <option key={s.id} value={s.name}>
+                      <option key={s.id} value={s.id}>
                         {s.name}
                       </option>
                     ))
@@ -339,37 +392,53 @@ function NewProjectPage() {
               </Field>
             </div>
 
-            <Field label="Tecnologías" hint="Pulsa Enter para agregar">
-              <div className="flex flex-wrap gap-1.5 rounded-md border border-input bg-surface p-2 focus-within:border-accent-blue focus-within:ring-2 focus-within:ring-accent-blue/15">
-                {techs.map((t) => (
-                  <span
-                    key={t}
-                    className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-mono"
-                  >
-                    {t}
-                    <button
-                      type="button"
-                      onClick={() => setTechs(techs.filter((x) => x !== t))}
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-                <input
-                  value={techInput}
-                  onChange={(e) => setTechInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addTech();
-                    }
-                  }}
-                  placeholder="Ej. React, TypeScript…"
-                  className="min-w-[120px] flex-1 bg-transparent text-sm outline-none"
-                />
-              </div>
+            {/* Technologies multi-select */}
+            <Field label="Tecnologías" hint="Selecciona las que apliquen">
+              {techsQ.isLoading ? (
+                <div className="text-xs text-muted-foreground">Cargando tecnologías...</div>
+              ) : techsQ.isError ? (
+                <div className="text-xs text-destructive">Error al cargar tecnologías</div>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {techsQ.data?.map((t: Technology) => {
+                    const selected = techIds.includes(t.id);
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => toggleTech(t.id)}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                          selected
+                            ? "border-accent-blue bg-accent-blue/10 text-accent-blue"
+                            : "border-border hover:bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {selected && <X className="h-3 w-3" />}
+                        {t.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {/* Show selected count */}
+              {techIds.length > 0 && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {techIds.length} tecnología{techIds.length !== 1 ? "s" : ""} seleccionada
+                  {techIds.length !== 1 ? "s" : ""}
+                </p>
+              )}
             </Field>
 
+            {/* Submit error */}
+            {submitError && (
+              <div className="flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                <p className="text-xs text-destructive">{submitError}</p>
+              </div>
+            )}
+
+            {/* Actions */}
             <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
               <button
                 type="button"
@@ -383,9 +452,22 @@ function NewProjectPage() {
               </button>
               <button
                 type="submit"
-                className="inline-flex h-10 items-center gap-2 rounded-md bg-accent-blue text-white px-5 text-sm font-medium hover:opacity-90 transition-opacity"
+                disabled={isSubmitting || courseId === null || semesterId === null}
+                className={cn(
+                  "inline-flex h-10 items-center gap-2 rounded-md px-5 text-sm font-medium transition-opacity",
+                  isSubmitting || courseId === null || semesterId === null
+                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                    : "bg-accent-blue text-white hover:opacity-90"
+                )}
               >
-                Publicar proyecto
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Publicando...
+                  </>
+                ) : (
+                  "Publicar proyecto"
+                )}
               </button>
             </div>
           </form>
