@@ -73,7 +73,7 @@ function normalizeRepoUrl(url: string | null | undefined): string | null {
 
 function buildFallbackProject(db: DBProject): Project {
   const normalized = normalizeRepoUrl(db.repoUrl);
-  const slug = String(db.id); // siempre ID numérico para que el refresh funcione
+  const slug = String(db.id);
 
   return {
     id: String(db.id),
@@ -91,7 +91,7 @@ function buildFallbackProject(db: DBProject): Project {
     openIssues: 0,
     updatedAt: "—",
     repoUrl: normalized?.replace("https://", "") ?? "",
-    githubRepo: normalized ?? "", // URL completa necesaria para parseGithubRepo()
+    githubRepo: normalized ?? "",
     testCoverage: 0,
     activity: [],
   };
@@ -148,8 +148,6 @@ export const Route = createFileRoute("/projects_/$slug")({
                 manifestUrl: found.manifestUrl,
                 tutor: found.tutor,
               };
-              // mapGitHubRepoToProject ya asigna slug = String(db.id)
-              // y githubRepo = repo.html_url (URL completa)
               return { project: mapGitHubRepoToProject(ghRepo) };
             }
           } catch (e) {
@@ -204,7 +202,6 @@ function ProjectDetail() {
   const router = useRouter();
   const [refreshTick, setRefreshTick] = useState(0);
 
-  // Cargar proyecto dinámicamente desde el backend para que refleje cambios
   const projectQ = useQuery({
     queryKey: ["projects", initialProject.id, refreshTick],
     queryFn: async () => {
@@ -212,8 +209,7 @@ function ProjectDetail() {
         const response = await fetch(`${BACKEND}/projects`);
         if (!response.ok) throw new Error("Error al consultar proyectos");
         const dbProjects: DBProject[] = await response.json();
-        
-        // Buscar por ID
+
         const found = dbProjects.find((p) => String(p.id) === initialProject.id);
         if (!found) return initialProject;
 
@@ -399,7 +395,7 @@ function ReadmeSection({ gh }: { gh: { owner: string; repo: string } | null }) {
             Este repositorio no tiene un README disponible.
           </EmptyState>
         )}
-            {q.data && (
+        {q.data && (
           <article className="prose-doc max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {decodeBase64Utf8((q.data as any).content)}
@@ -451,7 +447,7 @@ function ActivitySection({
             <EmptyState>No hay actividad reciente en este repositorio.</EmptyState>
           </div>
         )}
-            {q.data && (q.data as GhCommit[]).length > 0 && (
+        {q.data && (q.data as GhCommit[]).length > 0 && (
           <ul className="divide-y divide-border">
             {(q.data as GhCommit[]).map((c: GhCommit) => (
               <li key={c.sha} className="flex items-start gap-3 px-4 py-3">
@@ -497,6 +493,90 @@ function ActivitySection({
   );
 }
 
+/* ── Equipo (contributors desde GitHub) ───────────────────────────── */
+
+function TeamCard({
+  gh,
+  fallbackAuthors,
+}: {
+  gh: { owner: string; repo: string } | null;
+  fallbackAuthors: { name: string; initials: string }[];
+}) {
+  const contributorsQ = useQuery({
+    queryKey: ["gh", "contributors", gh?.owner, gh?.repo],
+    queryFn: async () => {
+      const res = await fetch(
+        `https://api.github.com/repos/${gh!.owner}/${gh!.repo}/contributors`,
+        { headers: { Accept: "application/vnd.github+json" } }
+      );
+      if (!res.ok) throw new Error("Error al cargar contributors");
+      return res.json() as Promise<
+        { login: string; avatar_url: string; html_url: string; contributions: number }[]
+      >;
+    },
+    enabled: !!gh,
+  });
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-5">
+      <h3 className="mb-3 text-sm font-semibold">Equipo</h3>
+
+      {/* Cargando */}
+      {contributorsQ.isLoading && (
+        <ul className="space-y-2">
+          {[1, 2].map((i) => (
+            <li key={i} className="flex items-center gap-2">
+              <Skeleton className="h-7 w-7 rounded-full" />
+              <Skeleton className="h-3 w-24" />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Contributors de GitHub con avatar real */}
+      {contributorsQ.data && contributorsQ.data.length > 0 && (
+        <ul className="space-y-2">
+          {contributorsQ.data.map((c) => (
+            <li key={c.login} className="flex items-center gap-2">
+              <img
+                src={c.avatar_url}
+                alt={c.login}
+                className="h-7 w-7 rounded-full object-cover"
+                loading="lazy"
+              />
+              <a
+                href={c.html_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm hover:text-accent-green-deep hover:underline"
+              >
+                {c.login}
+              </a>
+              <span className="ml-auto font-mono text-[11px] text-muted-foreground">
+                {c.contributions} commits
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Fallback: si GitHub falla, usar autores de la BD */}
+      {(contributorsQ.isError || contributorsQ.data?.length === 0) && (
+        <ul className="space-y-2">
+          {fallbackAuthors.map((a) => (
+            <li key={a.initials} className="flex items-center gap-2">
+              <div className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-accent-green to-accent-green-mid text-[10px] font-semibold text-white">
+                {a.initials}
+              </div>
+              <span className="text-sm">{a.name}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /* ── Atributos del proyecto (sidebar derecho) ──────────────────────── */
 
 function AttributesCard({
@@ -525,20 +605,8 @@ function AttributesCard({
 
   return (
     <div className="space-y-4">
-      {/* Equipo */}
-      <div className="rounded-xl border border-border bg-surface p-5">
-        <h3 className="mb-3 text-sm font-semibold">Equipo</h3>
-        <ul className="space-y-2">
-          {project.authors.map((a) => (
-            <li key={a.initials} className="flex items-center gap-2">
-              <div className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-accent-green to-accent-green-mid text-[10px] font-semibold text-white">
-                {a.initials}
-              </div>
-              <span className="text-sm">{a.name}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {/* Equipo — contributors desde GitHub con fallback a BD */}
+      <TeamCard gh={gh} fallbackAuthors={project.authors} />
 
       {/* Repositorio */}
       <div className="rounded-xl border border-border bg-surface p-5">
