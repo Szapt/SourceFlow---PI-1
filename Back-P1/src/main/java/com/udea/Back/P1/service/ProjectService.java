@@ -3,9 +3,17 @@ package com.udea.Back.P1.service;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpHeaders;
+
 
 import com.udea.Back.P1.dto.ProjectRequestDTO;
 import com.udea.Back.P1.dto.ProjectResponseDTO;
@@ -68,17 +76,67 @@ public class ProjectService {
 
         ProjectEntity saved = projectRepository.save(p);
 
+        // 1. Asociar al creador por email
+        UserEntity creator = null;
         if (dto.getUserEmail() != null && !dto.getUserEmail().isBlank()) {
-            UserEntity student = userRepository.findByEmail(dto.getUserEmail());
-            if (student != null) {
-                ProjectTeamsEntity team = new ProjectTeamsEntity();
-                team.setProject(saved);
-                team.setStudent(student);
-                projectTeamsRepository.save(team);
+            creator = userRepository.findByEmail(dto.getUserEmail());
+            if (creator != null) {
+                addToTeam(saved, creator);
             }
         }
 
+        // 2. Asociar colaboradores (sin token, repo público)
+        if (dto.getRepoFullName() != null && !dto.getRepoFullName().isBlank() && creator != null) {
+            syncCollaborators(saved, dto.getRepoFullName(), creator);
+        }
+
         return saved;
+    }
+
+    private void syncCollaborators(ProjectEntity project, String repoFullName, UserEntity creator) {
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            String url = "https://api.github.com/repos/" + repoFullName + "/collaborators";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Accept", "application/vnd.github+json");
+
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                request,
+                new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+            );
+
+            if (response.getBody() == null) return;
+
+            for (Map<String, Object> collab : response.getBody()) {
+                String login = (String) collab.get("login");
+                if (login == null) continue;
+
+                UserEntity collaborator = userRepository.findByGithubUsername(login);
+                if (collaborator == null) continue;
+
+                boolean alreadyAdded = project.getTeam().stream()
+                    .anyMatch(t -> t.getStudent().getId().equals(collaborator.getId()));
+
+                if (!alreadyAdded) {
+                    addToTeam(project, collaborator);
+                }
+            }
+
+        } catch (Exception e) {
+            System.err.println("No se pudieron sincronizar colaboradores: " + e.getMessage());
+        }
+    }
+
+    private void addToTeam(ProjectEntity project, UserEntity student) {
+        ProjectTeamsEntity team = new ProjectTeamsEntity();
+        team.setProject(project);
+        team.setStudent(student);
+        projectTeamsRepository.save(team);
     }
 
     private ProjectResponseDTO mapToDto(ProjectEntity project) {

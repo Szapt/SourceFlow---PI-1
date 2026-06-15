@@ -8,5 +8,5 @@ import com.udea.Back.P1.entity.UserEntity;
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     UserEntity findByEmail(String email);
-
+    UserEntity findByGithubUsername(String githubUsername);
 }

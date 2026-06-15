@@ -121,16 +121,15 @@ function NewProjectPage() {
       const owner = match[1];
       const repo = match[2];
 
-      // Optionally verify ownership against logged-in GitHub user
       const currentUserEmail =
         typeof window !== "undefined" ? localStorage.getItem("userEmail") : null;
-      let currentUsername =
+      const currentUsername =
         typeof window !== "undefined"
           ? localStorage.getItem("github_username") || localStorage.getItem("userUsername")
           : null;
 
+      // 1. Validar que el repo existe en GitHub
       const ghResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
-
       if (!ghResponse.ok) {
         setValidationError(
           ghResponse.status === 404
@@ -143,31 +142,52 @@ function NewProjectPage() {
 
       const ghRepoData = await ghResponse.json();
 
-      // Try to resolve username from backend if not cached
-      if (!currentUsername && currentUserEmail) {
+      // 2. Obtener colaboradores del repo
+      const collabResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/collaborators`
+      );
+      const collaborators: { login: string }[] =
+        collabResponse.ok ? await collabResponse.json() : [];
+
+      // Logins de todos los que tienen acceso (dueño + colaboradores)
+      const allowedLogins = [
+        owner.toLowerCase(),
+        ...collaborators.map((c) => c.login.toLowerCase()),
+      ];
+
+      // 3. Validar si el usuario actual pertenece al repo
+      const usernameMatch =
+        currentUsername && allowedLogins.includes(currentUsername.toLowerCase());
+
+      // Si no hay username local, intentar resolverlo desde el backend
+      let resolvedUsername = currentUsername;
+      if (!resolvedUsername && currentUserEmail) {
         try {
-          const userResponse = await fetch(`${BACKEND}/api/user/username`, {
+          const userResponse = await fetch(`http://localhost:8080/api/user/username`, {
             headers: { "X-User-Email": currentUserEmail },
           });
           if (userResponse.ok) {
             const userData = await userResponse.json();
-            currentUsername = userData.username;
-            if (currentUsername) localStorage.setItem("userUsername", currentUsername);
+            resolvedUsername = userData.username;
+            if (resolvedUsername) localStorage.setItem("userUsername", resolvedUsername);
           }
         } catch (e) {
-          console.error("Could not fetch user username:", e);
+          console.error("No se pudo obtener el username:", e);
         }
       }
 
-      if (currentUsername && owner.toLowerCase() !== currentUsername.toLowerCase()) {
+      const finalMatch =
+        resolvedUsername && allowedLogins.includes(resolvedUsername.toLowerCase());
+
+      if (!finalMatch) {
         setValidationError(
-          `El repositorio debe ser tuyo. Propietario: ${owner}, usuario actual: ${currentUsername}`
+          "El proyecto solo puede ser subido por su creador o un colaborador del repositorio"
         );
         setIsValidating(false);
         return;
       }
 
-      // Success — advance to phase 2
+      // 4. Éxito — pasar a fase 2
       setRepoData(ghRepoData);
       setTechIds([]);
       setSubmitError(null);
@@ -206,7 +226,8 @@ function NewProjectPage() {
       stateId: 2,
       tutorId: 1,
       technologyIds: techIds,
-      userEmail,   // ← AGREGAR ESTO
+      userEmail: localStorage.getItem("userEmail"),
+      repoFullName: repoData.full_name,   // ← ej: "parcero/mi-repo"
     };
 
     try {
