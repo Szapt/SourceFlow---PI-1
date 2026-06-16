@@ -96,7 +96,9 @@ public class ProjectService {
     private void syncCollaborators(ProjectEntity project, String repoFullName, UserEntity creator) {
         try {
             RestTemplate restTemplate = new RestTemplate();
-            String url = "https://api.github.com/repos/" + repoFullName + "/collaborators";
+
+            // /contributors es público, no requiere token
+            String url = "https://api.github.com/repos/" + repoFullName + "/contributors";
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("Accept", "application/vnd.github+json");
@@ -110,25 +112,43 @@ public class ProjectService {
                 new ParameterizedTypeReference<List<Map<String, Object>>>() {}
             );
 
-            if (response.getBody() == null) return;
+            if (response.getBody() == null) {
+                System.out.println("[syncCollaborators] GitHub no retornó contributors.");
+                return;
+            }
+
+            System.out.println("[syncCollaborators] Contributors encontrados: " + response.getBody().size());
 
             for (Map<String, Object> collab : response.getBody()) {
                 String login = (String) collab.get("login");
                 if (login == null) continue;
 
-                UserEntity collaborator = userRepository.findByGithubUsername(login);
-                if (collaborator == null) continue;
+                System.out.println("[syncCollaborators] Buscando en BD: github_username = " + login);
 
+                UserEntity collaborator = userRepository.findByGithubUsername(login);
+
+                if (collaborator == null) {
+                    System.out.println("[syncCollaborators] ⚠️ No encontrado en BD: " + login
+                        + " — el usuario debe registrarse con OAuth de GitHub");
+                    continue;
+                }
+
+                // Evitar duplicar al creador que ya fue insertado
                 boolean alreadyAdded = project.getTeam().stream()
                     .anyMatch(t -> t.getStudent().getId().equals(collaborator.getId()));
 
-                if (!alreadyAdded) {
-                    addToTeam(project, collaborator);
+                if (alreadyAdded) {
+                    System.out.println("[syncCollaborators] Ya en equipo: " + login);
+                    continue;
                 }
+
+                addToTeam(project, collaborator);
+                System.out.println("[syncCollaborators] ✅ Agregado al equipo: " + login);
             }
 
         } catch (Exception e) {
-            System.err.println("No se pudieron sincronizar colaboradores: " + e.getMessage());
+            System.err.println("[syncCollaborators] Error: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
