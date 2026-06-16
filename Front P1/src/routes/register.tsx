@@ -26,7 +26,7 @@ function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [, setTokens] = useState<any>(null);
-
+  const API_URL = import.meta.env.VITE_API_BASE_URL;
   const handleRegisterSuccess = () => {
     localStorage.setItem("isAuthenticated", "true");
     navigate({ to: "/" });
@@ -40,7 +40,8 @@ function RegisterPage() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
-      const response = await fetch('http://localhost:8080/register/oauth', {
+      
+      const response = await fetch(`${API_URL}/register/oauth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -84,7 +85,7 @@ function RegisterPage() {
     setError(null);
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8080/register", {
+      const response = await fetch(`${API_URL}/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

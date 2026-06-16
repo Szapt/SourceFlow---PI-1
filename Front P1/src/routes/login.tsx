@@ -25,6 +25,7 @@ function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [, setTokens] = useState<any>(null);
+  const API_URL = import.meta.env.VITE_API_BASE_URL;
 
   const handleLogin = () => {
     localStorage.setItem("isAuthenticated", "true");
@@ -42,7 +43,7 @@ function LoginPage() {
       const oauthAccessToken = (result as any)._tokenResponse?.oauthAccessToken;
       localStorage.setItem("github_username", githubUsername);
 
-      const response = await fetch('http://localhost:8080/register/oauth', {
+      const response = await fetch(`${API_URL}/register/oauth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -82,7 +83,7 @@ function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8080/login", {
+      const response = await fetch(`${API_URL}/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

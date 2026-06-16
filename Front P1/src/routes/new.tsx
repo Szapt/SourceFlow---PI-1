@@ -6,8 +6,8 @@ import { AppShell } from "@/components/AppShell";
 import { CheckCircle2, AlertCircle, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const BACKEND = "http://localhost:8080";
 
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 interface Course {
   id: number;
   name: string;
@@ -52,7 +52,7 @@ function NewProjectPage() {
   const coursesQ = useQuery({
     queryKey: ["courses"],
     queryFn: async () => {
-      const res = await fetch(`${BACKEND}/projects/lookup/courses`);
+      const res = await fetch(`${API_URL}/projects/lookup/courses`);
       if (!res.ok) throw new Error("Error al cargar cursos");
       return res.json() as Promise<Course[]>;
     },
@@ -61,7 +61,7 @@ function NewProjectPage() {
   const semestersQ = useQuery({
     queryKey: ["semesters"],
     queryFn: async () => {
-      const res = await fetch(`${BACKEND}/projects/lookup/semesters`);
+      const res = await fetch(`${API_URL}/projects/lookup/semesters`);
       if (!res.ok) throw new Error("Error al cargar semestres");
       return res.json() as Promise<Semester[]>;
     },
@@ -70,7 +70,7 @@ function NewProjectPage() {
   const techsQ = useQuery({
     queryKey: ["technologies"],
     queryFn: async () => {
-      const res = await fetch(`${BACKEND}/projects/lookup/technologies`);
+      const res = await fetch(`${API_URL}/projects/lookup/technologies`);
       if (!res.ok) throw new Error("Error al cargar tecnologías");
       return res.json() as Promise<Technology[]>;
     },
@@ -163,7 +163,7 @@ function NewProjectPage() {
       let resolvedUsername = currentUsername;
       if (!resolvedUsername && currentUserEmail) {
         try {
-          const userResponse = await fetch(`http://localhost:8080/api/user/username`, {
+          const userResponse = await fetch(`${API_URL}/api/user/username`, {
             headers: { "X-User-Email": currentUserEmail },
           });
           if (userResponse.ok) {
@@ -231,7 +231,7 @@ function NewProjectPage() {
     };
 
     try {
-      const res = await fetch(`${BACKEND}/projects/upload`, {
+      const res = await fetch(`${API_URL}/projects/upload`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -320,9 +320,7 @@ function NewProjectPage() {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Phase 2: fill details and submit
-  // ─────────────────────────────────────────────────────────────────────────
+
   return (
     <AppShell
       breadcrumb={<span className="font-medium text-foreground">Nuevo proyecto</span>}

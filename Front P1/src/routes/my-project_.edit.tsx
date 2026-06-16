@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const BACKEND = "http://localhost:8080";
+const API_URL = import.meta.env.VITE_API_BASE_URL;
+
 
 interface Technology {
   id: number;
@@ -77,7 +78,7 @@ function EditProjectPage() {
   const techsQ = useQuery({
     queryKey: ["technologies"],
     queryFn: async () => {
-      const res = await fetch(`${BACKEND}/projects/lookup/technologies`);
+      const res = await fetch(`${API_URL}/projects/lookup/technologies`);
       if (!res.ok) throw new Error("Error al cargar tecnologías");
       return res.json() as Promise<Technology[]>;
     },
@@ -86,7 +87,7 @@ function EditProjectPage() {
   const usersQ = useQuery({
     queryKey: ["all-users"],
     queryFn: async () => {
-      const res = await fetch(`${BACKEND}/my-project/users`);
+      const res = await fetch(`${API_URL}/my-project/users`);
       if (!res.ok) throw new Error("Error al cargar usuarios");
       return res.json() as Promise<UserSummary[]>;
     },
@@ -97,7 +98,7 @@ function EditProjectPage() {
 
     const load = async () => {
       try {
-        const res = await fetch(`${BACKEND}/my-project`, {
+        const res = await fetch(`${API_URL}/my-project`, {
           headers: { "X-User-Email": userEmail, "Content-Type": "application/json" },
         });
         if (!res.ok) throw new Error(`Error ${res.status}`);
@@ -170,7 +171,7 @@ function EditProjectPage() {
     setSavedOk(false);
     setIsSaving(true);
     try {
-      const res = await fetch(`${BACKEND}/my-project`, {
+      const res = await fetch(`${API_URL}/my-project`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "X-User-Email": userEmail },
         body: JSON.stringify({

@@ -8,7 +8,7 @@ import { Briefcase, Github, ExternalLink, Settings2, Upload, PencilLine } from "
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
-const BACKEND = "http://localhost:8080";
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 interface BackendProjectResponse {
   id: number;
@@ -66,7 +66,7 @@ function MyProjectPage() {
       }
 
       try {
-        const response = await fetch(`${BACKEND}/my-project`, {
+        const response = await fetch(`${API_URL}/my-project`, {
           headers,
           method: "GET",
         });

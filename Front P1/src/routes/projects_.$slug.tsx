@@ -61,8 +61,7 @@ function dbReferenceName(ref: DbReference): string {
   return ref.name ?? (ref.id != null ? String(ref.id) : "");
 }
 
-const BACKEND = "http://localhost:8080";
-
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 /** Normaliza URLs de repo que vienen sin protocolo desde la BD.
  *  "github.com/owner/repo" → "https://github.com/owner/repo" */
 function normalizeRepoUrl(url: string | null | undefined): string | null {
@@ -102,7 +101,7 @@ export const Route = createFileRoute("/projects_/$slug")({
     const slug = params.slug;
 
     try {
-      const response = await fetch(`${BACKEND}/projects`);
+      const response = await fetch(`${API_URL}/projects`);
       if (!response.ok) throw new Error("Error al consultar proyectos en el backend");
 
       const dbProjects: DBProject[] = await response.json();
@@ -206,7 +205,7 @@ function ProjectDetail() {
     queryKey: ["projects", initialProject.id, refreshTick],
     queryFn: async () => {
       try {
-        const response = await fetch(`${BACKEND}/projects`);
+        const response = await fetch(`${API_URL}/projects`);
         if (!response.ok) throw new Error("Error al consultar proyectos");
         const dbProjects: DBProject[] = await response.json();
 
