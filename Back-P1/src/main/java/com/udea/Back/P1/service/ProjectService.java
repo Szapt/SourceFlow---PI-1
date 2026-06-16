@@ -1,9 +1,12 @@
 package com.udea.Back.P1.service;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.ResponseEntity;
@@ -76,24 +79,28 @@ public class ProjectService {
 
         ProjectEntity saved = projectRepository.save(p);
 
-        // 1. Asociar al creador por email
-        UserEntity creator = null;
+        // Set local para evitar duplicados — NO depende de project.getTeam()
+        Set<Long> insertedIds = new HashSet<>();
+
+        // 1. Insertar al owner por email
         if (dto.getUserEmail() != null && !dto.getUserEmail().isBlank()) {
-            creator = userRepository.findByEmail(dto.getUserEmail());
+            UserEntity creator = userRepository.findByEmail(dto.getUserEmail());
             if (creator != null) {
                 addToTeam(saved, creator);
+                insertedIds.add(creator.getId());
+                System.out.println("[createProject] ✅ Owner insertado: " + creator.getGithubUsername());
             }
         }
 
-        // 2. Asociar colaboradores (sin token, repo público)
-        if (dto.getRepoFullName() != null && !dto.getRepoFullName().isBlank() && creator != null) {
-            syncCollaborators(saved, dto.getRepoFullName(), creator);
+        // 2. Insertar contributors desde GitHub
+        if (dto.getRepoFullName() != null && !dto.getRepoFullName().isBlank()) {
+            syncCollaborators(saved, dto.getRepoFullName(), insertedIds);
         }
 
         return saved;
     }
 
-    private void syncCollaborators(ProjectEntity project, String repoFullName, UserEntity creator) {
+    private void syncCollaborators(ProjectEntity project, String repoFullName, Set<Long> insertedIds) {
         try {
             RestTemplate restTemplate = new RestTemplate();
 
@@ -123,27 +130,24 @@ public class ProjectService {
                 String login = (String) collab.get("login");
                 if (login == null) continue;
 
-                System.out.println("[syncCollaborators] Buscando en BD: github_username = " + login);
+                System.out.println("[syncCollaborators] Buscando en BD: " + login);
 
                 UserEntity collaborator = userRepository.findByGithubUsername(login);
 
                 if (collaborator == null) {
-                    System.out.println("[syncCollaborators] ⚠️ No encontrado en BD: " + login
-                        + " — el usuario debe registrarse con OAuth de GitHub");
+                    System.out.println("[syncCollaborators] ⚠️ No encontrado en BD: " + login);
                     continue;
                 }
 
-                // Evitar duplicar al creador que ya fue insertado
-                boolean alreadyAdded = project.getTeam().stream()
-                    .anyMatch(t -> t.getStudent().getId().equals(collaborator.getId()));
-
-                if (alreadyAdded) {
-                    System.out.println("[syncCollaborators] Ya en equipo: " + login);
+                // Chequeo contra Set local — no depende de JPA
+                if (insertedIds.contains(collaborator.getId())) {
+                    System.out.println("[syncCollaborators] Duplicado evitado: " + login);
                     continue;
                 }
 
                 addToTeam(project, collaborator);
-                System.out.println("[syncCollaborators] ✅ Agregado al equipo: " + login);
+                insertedIds.add(collaborator.getId());
+                System.out.println("[syncCollaborators] ✅ Contributor insertado: " + login);
             }
 
         } catch (Exception e) {
