@@ -3,10 +3,9 @@ package com.udea.Back.P1.service;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
-import java.util.HashSet;
 
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +19,7 @@ import org.springframework.http.HttpHeaders;
 
 import com.udea.Back.P1.dto.ProjectRequestDTO;
 import com.udea.Back.P1.dto.ProjectResponseDTO;
+import com.udea.Back.P1.dto.ProjectUpdateDTO;
 import com.udea.Back.P1.entity.ProjectEntity;
 import com.udea.Back.P1.entity.ProjectTeamsEntity;
 import com.udea.Back.P1.entity.TechnologyEntity;
@@ -195,13 +195,58 @@ public class ProjectService {
                 .toList();
         dto.setTechnologies(technologyNames);
 
-        List<String> studentNames = project.getTeam().stream()
-                .map(ProjectTeamsEntity::getStudent)
-                .map(student -> student.getName())
+        // Consulta directa a projects_teams JOIN Users para evitar lazy loading
+        List<Object[]> teamRows = projectTeamsRepository.findStudentInfoByProjectId(project.getId());
+
+        List<String> studentNames = teamRows.stream()
+                .map(row -> (String) row[0])
                 .toList();
         dto.setStudentNames(studentNames);
 
+        List<String> studentEmails = teamRows.stream()
+                .map(row -> (String) row[1])
+                .toList();
+        dto.setStudentEmails(studentEmails);
+
         return dto;
+    }
+
+    @Transactional
+    public Optional<ProjectResponseDTO> updateMyProject(String userEmail, ProjectUpdateDTO dto) {
+        if (userEmail == null || userEmail.isBlank()) {
+            return Optional.empty();
+        }
+
+        Optional<ProjectEntity> found = projectRepository.findActiveProjectForStudent(userEmail, LocalDate.now());
+        if (found.isEmpty()) {
+            return Optional.empty();
+        }
+
+        ProjectEntity project = found.get();
+
+        if (dto.getDescription() != null) {
+            project.setDescription(dto.getDescription());
+        }
+
+        if (dto.getTechnologyIds() != null) {
+            project.setTechnologies(technologyRepository.findAllById(dto.getTechnologyIds()));
+        }
+
+        if (dto.getAuthorEmails() != null) {
+            projectTeamsRepository.deleteByProjectId(project.getId());
+            projectTeamsRepository.flush();
+            Set<Long> inserted = new HashSet<>();
+            for (String email : dto.getAuthorEmails()) {
+                UserEntity user = userRepository.findByEmail(email);
+                if (user != null && !inserted.contains(user.getId())) {
+                    addToTeam(project, user);
+                    inserted.add(user.getId());
+                }
+            }
+        }
+
+        ProjectEntity saved = projectRepository.save(project);
+        return Optional.of(mapToDto(saved));
     }
 
     @Transactional(readOnly = true)

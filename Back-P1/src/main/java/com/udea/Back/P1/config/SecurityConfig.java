@@ -29,6 +29,8 @@ public class SecurityConfig {
                         .requestMatchers("/register").permitAll()
                         .requestMatchers("/register/oauth").permitAll()
                         .requestMatchers("/my-project").permitAll()
+                        .requestMatchers("/my-project/users").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/my-project").permitAll()
                         .requestMatchers("/projects").permitAll()
                         .requestMatchers("/", "/projects/**").permitAll()
                         .anyRequest().authenticated());

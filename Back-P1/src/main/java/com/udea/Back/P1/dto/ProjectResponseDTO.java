@@ -33,4 +33,5 @@ public class ProjectResponseDTO {
     // Listas simplificadas para romper el bucle infinito
     private List<String> technologies; // Solo los nombres de las tecnologías ["React", "Java"]
     private List<String> studentNames; // Solo los nombres de los estudiantes del equipo
+    private List<String> studentEmails; // Emails de los estudiantes del equipo
 }

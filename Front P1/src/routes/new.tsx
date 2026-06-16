@@ -227,7 +227,7 @@ function NewProjectPage() {
       tutorId: 1,
       technologyIds: techIds,
       userEmail: localStorage.getItem("userEmail"),
-      repoFullName: repoData.full_name,   // ← ej: "parcero/mi-repo"
+      repoFullName: repoData.full_name,   // 
     };
 
     try {

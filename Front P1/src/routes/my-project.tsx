@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DeliveryStatusCard } from "@/components/DeliveryStatusCard";
@@ -50,6 +50,7 @@ export const Route = createFileRoute("/my-project")({
 });
 
 function MyProjectPage() {
+  const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -207,6 +208,7 @@ function MyProjectPage() {
                 icon={PencilLine}
                 title="Editar detalles"
                 description="Actualiza descripción, stack y autores."
+                onClick={() => navigate({ to: "/my-project/edit" })}
               />
             </div>
           </section>
@@ -340,14 +342,17 @@ function ActionTile({
   icon: Icon,
   title,
   description,
+  onClick,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
+  onClick?: () => void;
 }) {
   return (
     <button
       type="button"
+      onClick={onClick}
       className="group flex items-start gap-3 rounded-xl border border-border bg-surface p-4 text-left transition-colors hover:border-accent-green hover:bg-accent-green-soft/30"
     >
       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent-green-soft text-accent-green-deep">
