@@ -66,7 +66,7 @@ export interface GitHubRepo {
   _db?: DBProject;
 }
 
-const BACKEND = "http://localhost:8080";
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 const GH_HEADERS: HeadersInit = {
   Accept: "application/vnd.github+json",
   "X-GitHub-Api-Version": "2022-11-28",
@@ -112,7 +112,7 @@ export function useGitHubRepos(_options?: {
 
     async function load(): Promise<Project[]> {
       // ── 1. Obtener proyectos desde el backend ──────────────────────────────
-      const dbRes = await fetch(`${BACKEND}/projects`);
+      const dbRes = await fetch(`${API_URL}/projects`);
       if (!dbRes.ok) {
         throw new Error(`Error al obtener proyectos del servidor: ${dbRes.status}`);
       }
