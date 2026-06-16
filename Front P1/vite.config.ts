@@ -11,6 +11,11 @@ export default defineConfig({
     server: {
       port: 5173,
       strictPort: true,
+      allowedHosts: [
+        "sourceflow-pi-1.onrender.com",
+        "localhost",
+        "127.0.0.1",
+      ],
     },
     ssr: {
       noExternal: ["firebase"],
