@@ -40,7 +40,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("http://localhost:*", "https://connected-nacho-sleet.ngrok-free.dev",
+        config.setAllowedOriginPatterns(List.of("http://localhost:*", "https://sourceflow-pi-1.onrender.com", "https://connected-nacho-sleet.ngrok-free.dev",
                 "http://localhost:8080/swagger-ui/index.html"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
